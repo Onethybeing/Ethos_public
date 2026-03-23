@@ -6,7 +6,7 @@
 **March 24, 2026** [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
 
 ## Executive Summary
-EthosNews delivers a participatory, intent-driven news ecosystem addressing 2026's core media pathologies: algorithmic echo chambers, narrative overload without perspective, and AI-generated misinformation. Through Personal News Constitutions (PNC), narrative divergence clustering, agentic fact-checking, and epistemic leaderboards, users gain unprecedented agency, literacy, and trust. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
+EthosNews delivers a participatory, intent-driven news ecosystem addressing 2026's core media pathologies: algorithmic echo chambers, narrative overload without perspective, and AI-generated misinformation. Through Personal News Constitutions (PNC), narrative divergence clustering, agentic fact-checking, and gamified engagement leaderboards, users gain unprecedented agency, literacy, and trust. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
 
 **Current Prototype Status**: Internal MVP processing 50K articles/day with full PNC filtering, clustering, verification pipeline. Phase 2 closed beta ready for 500 power users (journalists/researchers). [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
 
@@ -44,7 +44,7 @@ India TAM: 450M digital news consumers. Year 1 SOM: 200-500K quality-seeking use
 - **A. Semantic Intent Parsing**: Natural language constitutions → vector constraints
 - **B. Narrative Divergence Clustering**: `Divergenceij = ||embAi - embAj||²` + HDBSCAN
 - **C. Agentic Fact-Checking**: 4-agent parallel workflow (4x latency reduction)
-- **D. LLM-as-Judge**: Epistemic merit scoring beyond engagement [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
+- **D. Gamified Leaderboard Engine**: Incentivizing news consumption alignment with user's PNC. *(Note: "LLM-as-Judge" for evaluating comment contributions vs. gossip is planned for future iterations).* [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
 
 ## 3. System Architecture (Prototype)
 
@@ -65,7 +65,7 @@ Stage 7: Agentic Verification (4 agents)
 ↓
 Stage 8: Pillar Summarization
 ↓
-Stage 9: Epistemic Ranking
+Stage 9: Gamified Leaderboard (PNC Alignment)
 ↓
 Stage 10: UI Payload
 ↓
@@ -96,11 +96,11 @@ Article → Agent1(Claim Extract) → Agent2(Evidence) → Agent3(Logic) → Age
 Veracity: 0.9 (3+ high-cred sources), 0.6-0.8 (mixed), 0.0-0.2 (contradicted)
 ```
 
-**Layer 4: Judgment Leaderboard**
+**Layer 4: Gamified Engagement Leaderboard**
 ```
-Epistemic Merit = 0.25*Coherence + 0.30*Evidence + 0.20*Attribution + 0.15*Diversity
-- Penalties: Confirmation bias (-0.20), Ad hominem (-0.15)
-Target: Mean EM score 0.70 [file:1]
+Engagement Score = 0.40*PNC Alignment + 0.30*Diversity of Viewpoints Read + 0.30*Time Spent on Verified Claims
+- Goal: Gamify the system to incentivize users to engage with platforms and align consumption with their personal news constitution.
+Target: High user retention and >80% PNC alignment metric [file:1]
 ```
 
 ### Tech Stack (Prototype)
@@ -149,7 +149,7 @@ Target: Mean EM score 0.70 [file:1]
 | Faithfulness (RAGAS) | 0.85 | Expert alignment |
 | Pillar Coherence | 0.75 | Within-cluster similarity |
 | Veracity Calibration | ECE<0.05 | Binned accuracy |
-| Epistemic Merit | Mean 0.70 | Leaderboard quality |  [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
+| PNC Alignment Gamification | Mean Score > 80 | Leaderboard metrics |  [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
 
 ## 7. User Workflows (Prototype)
 
@@ -178,14 +178,14 @@ Register article → Crypto authorship cert → Attribution tracking → Deepfak
 
 ## 8. Phase 2 → Phase 3 Roadmap
 - **Q2 2026**: Public alpha (50K users), Hindi support
-- **Q3 2026**: Mobile app, browser extension
+- **Q3 2026**: Mobile app, browser extension, LLM-as-Judge comment moderation (evaluation of real contribution vs. gossip)
 - **Q4 2026**: 500K articles/day, regional expansion [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
 
 ## 9. Competitive Moats
 1. **PNC Semantic Steering**: User intent as first-class architecture
 2. **Divergence Clustering**: Narrative landscapes vs. monoculture
 3. **Real-time Agentic Verification**: 4x faster than manual
-4. **Epistemic Leaderboards**: Quality over virality [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
+4. **Gamified Engagement Leaderboards**: Incentivized alignment of consumption with personal constitutions [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/52208921/48fd359d-92fa-4bb4-b379-fdb4ca176573/ethos.pdf)
 
 ## 10. Impact Quantification
 - **User**: 6hr/week time savings, 30% perspective diversity gain
