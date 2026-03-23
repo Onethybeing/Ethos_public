@@ -153,6 +153,12 @@ Target: High user retention and >80% PNC alignment metric [file:1]
 
 ## 7. User Workflows (Prototype)
 
+### Core App Experience (Daily Use)
+1. **"Your Feed" (Default View)**: Upon opening the app, the user is automatically presented with their personalized feed, featuring articles strictly filtered and aligned with their Personal News Constitution (PNC).
+2. **Article View**: When a user clicks to read a specific article, they are provided with two primary action buttons:
+   - **[View Narrative Clusters]**: Triggers the narrative divergence engine to instantly map out and summarize alternative perspectives (pillars) regarding the story.
+   - **[Verify Claims]**: Activates the agentic fact-checking pipeline to run a real-time verification overlay, assessing the veracity and extracting evidence for the article's claims.
+
 ### General Consumer
 ```
 Input: "Show balanced climate policy views, peer-reviewed only"
