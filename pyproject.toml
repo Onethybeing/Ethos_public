@@ -1,0 +1,16 @@
+[project]
+name = "ethos"
+version = "0.1.0"
+description = "EthosNews backend"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic-settings>=2.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
