@@ -1,0 +1,29 @@
+[
+  {
+    "user_id": "prototype_user",
+    "epistemic_framework": {
+      "primary_mode": "narrative",
+      "verification_threshold": 0.6
+    },
+    "narrative_preferences": {
+      "diversity_weight": 0.7,
+      "bias_tolerance": "high"
+    },
+    "topical_constraints": {
+      "priority_domains": [
+        "politics",
+        "economy",
+        "philosophy",
+        "culture",
+        "history"
+      ],
+      "excluded_topics": [
+        "AI"
+      ]
+    },
+    "complexity_preference": {
+      "readability_depth": "intermediate",
+      "data_density": "medium"
+    }
+  }
+]
