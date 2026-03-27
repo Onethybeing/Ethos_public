@@ -1,188 +1,232 @@
-import os
-import time
+"""
+Continuous news ingestion pipeline.
+
+Polls GDELT every N seconds, scrapes article text, embeds it, runs slop detection,
+and writes to both Qdrant (for semantic search) and Postgres (permanent storage).
+
+Architecture: async producer/consumer with configurable worker count.
+  - fetch_gdelt_source()  → pushes URLs into asyncio.Queue
+  - stream_processor()    → consumes URLs: scrape → embed → detect → persist
+"""
+from __future__ import annotations
+
 import asyncio
+import logging
+import os
 import uuid
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timezone
 
-import gdelt
-import requests
+import gdelt  # type: ignore[import-untyped]
+import httpx
 from bs4 import BeautifulSoup
-from dotenv import load_dotenv
+from qdrant_client.models import Distance, PointStruct, VectorParams
 
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
-from sentence_transformers import SentenceTransformer
-import spacy
+from backend.config import get_settings
+from backend.core.clients import get_encoder, get_nlp, get_qdrant
+from backend.core.db.postgres import init_db, save_article
+from backend.core.llm import get_llm
+from backend.services.slop_detector.slop_detector import SlopDetector
+from backend.services.slop_detector.slop_detector_l2 import SlopDetectorL2
 
-from backend.core.db.postgres import save_article, init_db
+logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------
-load_dotenv(r"C:\Users\soura\ethos\Ethos\backend\.env")
-QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
-COLLECTION_NAME = "news_articles_streaming"
+# Suppress MKL duplicate lib warning (Intel + sentence-transformers)
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
-# Global Models
-qdrant = None
-encoder = None
-nlp = None
 
-def init_services():
-    global qdrant, encoder, nlp
-    print("\n[Init] Setting up Models and Qdrant...")
-    qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-
+def _ensure_collection(settings) -> None:
+    """Create the Qdrant collection if it doesn't exist."""
+    qdrant = get_qdrant()
     try:
-        qdrant.get_collection(collection_name=COLLECTION_NAME)
+        qdrant.get_collection(settings.qdrant_collection)
     except Exception:
         qdrant.create_collection(
-            collection_name=COLLECTION_NAME,
+            collection_name=settings.qdrant_collection,
             vectors_config=VectorParams(size=384, distance=Distance.COSINE),
         )
+        logger.info("Created Qdrant collection: %s", settings.qdrant_collection)
 
-    encoder = SentenceTransformer('all-MiniLM-L6-v2')
+
+def _already_indexed(settings, doc_id: str) -> bool:
+    """Return True if this article UUID already exists in Qdrant (dedup check)."""
     try:
-        nlp = spacy.load("en_core_web_sm")
-    except OSError:
-        from spacy.cli import download
-        download("en_core_web_sm")
-        nlp = spacy.load("en_core_web_sm")
+        results = get_qdrant().retrieve(
+            collection_name=settings.qdrant_collection,
+            ids=[doc_id],
+            with_payload=False,
+            with_vectors=False,
+        )
+        return len(results) > 0
+    except Exception:
+        return False
 
-# ---------------------------------------------------------
-# Streaming Pipeline Steps
-# ---------------------------------------------------------
 
-async def fetch_gdelt_source(queue: asyncio.Queue):
+async def fetch_gdelt_source(queue: asyncio.Queue, settings) -> None:
     """
-    Acts as our continuously polling Source (equivalent to a Pathway stream input).
+    Producer: polls GDELT on a fixed interval and pushes new article URLs to queue.
+    Tracks seen URLs in-memory to avoid re-processing within a session.
     """
     g = gdelt.gdelt()
-    seen_urls = set()
-    
+    seen_urls: set[str] = set()
+
     while True:
-        print(f"\n[Source] Polling GDELT at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
+        logger.info("Polling GDELT…")
         try:
-            # Dynamically generated date to pull truly new articles 
-            # Note: GDELT events have 15-minute delays; polling older blocks is safer or just today's specific datestring
-            today_str = datetime.now(UTC).strftime('%Y %b %d')
-            df = g.Search([today_str], table='events', coverage=True)
+            today_str = datetime.now(timezone.utc).strftime("%Y %b %d")
+            df = g.Search([today_str], table="events", coverage=True)
             if df is not None and not df.empty:
-                urls = df['SOURCEURL'].dropna().unique().tolist()
-                timestamps = df['DATEADDED'].tolist()
-                
                 new_count = 0
-                for url, ts in zip(urls, timestamps):
+                for url, ts in zip(df["SOURCEURL"].dropna(), df["DATEADDED"]):
                     if url not in seen_urls:
                         seen_urls.add(url)
                         new_count += 1
-                        # Push to the streaming pipeline
-                        await queue.put({"source": url, "timestamp": str(ts)})
-                        
-                print(f"[Source] Found {new_count} NEW articles. Pushing to stream...")
+                        await queue.put({"url": url, "timestamp": str(ts)})
+                logger.info("GDELT: pushed %d new URLs to stream.", new_count)
             else:
-                print("[Source] No new events found currently.")
+                logger.info("GDELT: no new events found.")
         except Exception as e:
-            print(f"[Source] Error polling GDELT: {e}")
-            
-        # Poll again every 60 seconds
-        await asyncio.sleep(60)
+            logger.warning("GDELT polling error: %s", e)
 
-async def stream_processor(queue: asyncio.Queue):
+        await asyncio.sleep(settings.gdelt_poll_interval_secs)
+
+
+async def stream_processor(queue: asyncio.Queue, settings) -> None:
     """
-    Acts as our UDF mapper and sink. 
-    Continuously listens for URLs and writes to Qdrant.
+    Consumer: scrapes, embeds, detects slop, and persists each article.
+    Multiple workers run concurrently to hide I/O latency.
     """
-    while True:
-        # Wait for the next article in the stream
-        article = await queue.get()
-        url = article['source']
-        
-        try:
-            # 1. Scrape (UDF)
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            resp = requests.get(url, headers=headers, timeout=10)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            text = ' '.join([p.get_text() for p in soup.find_all('p') if p.get_text().strip()])
-            
-            if not text.strip():
-                continue # drop empty articles
-                
-            # 2. NER Processing (UDF)
-            doc = nlp(text[:100000])
-            entities = list(dict.fromkeys([ent.text for ent in doc.ents if ent.label_ in ["PERSON", "ORG", "GPE", "LOC"]]))
-            
-            # 3. Generating Embedding Vector (UDF)
-            vector = encoder.encode(text).tolist()
-            doc_id = str(uuid.uuid5(uuid.NAMESPACE_URL, url))
+    encoder = get_encoder()
+    nlp = get_nlp()
+    slop_l1 = SlopDetector(nlp)
+    slop_l2 = SlopDetectorL2(get_llm())
+    qdrant = get_qdrant()
+    char_limit = settings.spacy_char_limit
 
-            # 4. Sink to Qdrant (Sink)
-            qdrant.upsert(
-                collection_name=COLLECTION_NAME,
-                points=[PointStruct(
-                    id=doc_id,
-                    vector=vector,
-                    payload={
-                        "title": soup.find('title').get_text().strip() if soup.find('title') else "Untitled",
-                        "source": url,
-                        "timestamp": article['timestamp'],
-                        "content": text,
-                        "entities": entities
-                    }
-                )]
-            )
-            
-            # 5. Sink to Permanent PostgreSQL Storage
-            await save_article({
-                "id": doc_id,  # Use same UUID as Qdrant to link records cleanly if needed
-                "title": soup.find('title').get_text().strip() if soup.find('title') else "Untitled",
-                "content": text,
-                "url": url,
-                "source": url, # Using URL directly as source if empty, or can parse domains
-                "published_at": article['timestamp'], 
-                "image_url": None,
-                "category": None
-            })
+    async with httpx.AsyncClient(
+        timeout=settings.scrape_timeout_secs,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; EthosNews/2.0)"},
+        follow_redirects=True,
+    ) as http:
 
-            print(f"[Sink] Streamed -> Qdrant & Postgres: {url[:60]}...")
-            
-        except Exception as e:
-            # Silently catch 403s / timeouts and drop from stream to keep running 
-            pass
-        finally:
-            queue.task_done()
+        while True:
+            item = await queue.get()
+            url: str = item["url"]
 
-# ---------------------------------------------------------
-# Application Entrypoint
-# ---------------------------------------------------------
-async def main():
-    print("========================================")
-    print("   Continuous Ingestion Stream Started  ")
-    print("========================================")
-    
-    # Init strict database migrations
+            try:
+                # ── 1. Dedup check (UUID5 of URL) ──────────────────────────────
+                doc_id = str(uuid.uuid5(uuid.NAMESPACE_URL, url))
+                if _already_indexed(settings, doc_id):
+                    logger.debug("Skipping already-indexed URL: %s", url[:60])
+                    continue
+
+                # ── 2. Scrape ──────────────────────────────────────────────────
+                resp = await http.get(url)
+                resp.raise_for_status()
+                soup = BeautifulSoup(resp.text, "html.parser")
+                text = " ".join(
+                    p.get_text() for p in soup.find_all("p") if p.get_text().strip()
+                )
+                if not text.strip():
+                    continue
+
+                title = soup.find("title")
+                title_text = title.get_text().strip() if title else "Untitled"
+
+                # ── 3. NER (entities for Qdrant payload) ───────────────────────
+                doc = nlp(text[:char_limit])
+                entities = list(dict.fromkeys(
+                    ent.text for ent in doc.ents
+                    if ent.label_ in {"PERSON", "ORG", "GPE", "LOC"}
+                ))
+
+                # ── 4. Embed ───────────────────────────────────────────────────
+                vector = encoder.encode(text[:char_limit]).tolist()
+
+                # ── 5. AI slop detection (L1 → L2 only if uncertain) ───────────
+                slop = slop_l1.analyze(text)
+                if slop["ai_slop_label"] == "uncertain":
+                    slop = await slop_l2.evaluate_pipeline(text, slop)
+
+                slop_score: float | None = slop.get("ai_slop_score")
+                slop_label: str | None = slop.get("ai_slop_label")
+
+                # ── 6. Write to Qdrant ─────────────────────────────────────────
+                qdrant.upsert(
+                    collection_name=settings.qdrant_collection,
+                    points=[PointStruct(
+                        id=doc_id,
+                        vector=vector,
+                        payload={
+                            "title": title_text,
+                            "source": url,
+                            "timestamp": item["timestamp"],
+                            "content": text[:char_limit],
+                            "entities": entities,
+                            "ai_slop_score": slop_score,
+                            "ai_slop_label": slop_label,
+                        },
+                    )],
+                )
+
+                # ── 7. Write to Postgres ───────────────────────────────────────
+                inserted = await save_article({
+                    "id": doc_id,
+                    "title": title_text,
+                    "content": text,
+                    "url": url,
+                    "source": url,
+                    "published_at": item["timestamp"],
+                    "image_url": None,
+                    "category": None,
+                    "ai_slop_score": slop_score,
+                    "ai_slop_label": slop_label,
+                })
+
+                if inserted:
+                    logger.info(
+                        "Ingested [%s] %s… (slop=%s)",
+                        slop_label, url[:60], f"{slop_score:.2f}" if slop_score else "n/a",
+                    )
+
+            except httpx.HTTPStatusError as e:
+                logger.debug("HTTP %s for %s — skipping.", e.response.status_code, url[:60])
+            except httpx.RequestError as e:
+                logger.debug("Request error for %s: %s", url[:60], e)
+            except Exception as e:
+                logger.warning("Unexpected error processing %s: %s", url[:60], e)
+            finally:
+                queue.task_done()
+
+
+async def main() -> None:
+    from backend.core.logging_config import setup_logging
+    settings = get_settings()
+    setup_logging(settings.log_level)
+
+    logger.info("=" * 50)
+    logger.info("  EthosNews Continuous Ingestion Pipeline")
+    logger.info("=" * 50)
+
     await init_db()
-    
-    init_services()
-    
-    # Pathway-like unbounded stream queue
-    stream_queue = asyncio.Queue()
-    
-    # Run the poller and the processor concurrently
+    _ensure_collection(settings)
+
+    queue: asyncio.Queue = asyncio.Queue(maxsize=500)
+
+    workers = [
+        stream_processor(queue, settings)
+        for _ in range(settings.ingestion_workers)
+    ]
+
     await asyncio.gather(
-        fetch_gdelt_source(stream_queue),
-        stream_processor(stream_queue),
-        stream_processor(stream_queue), # Run 2 parallel workers (scraping is slow)
-        stream_processor(stream_queue)  # Total 3 workers
+        fetch_gdelt_source(queue, settings),
+        *workers,
     )
 
+
 if __name__ == "__main__":
-    # Ensure Windows asyncio works cleanly
-    if os.name == 'nt':
+    if os.name == "nt":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nShutdown signal received. Stopping stream.")
+        print("\nShutdown signal received. Stopping pipeline.")

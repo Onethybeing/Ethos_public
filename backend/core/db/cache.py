@@ -1,29 +1,80 @@
-import os
+from __future__ import annotations
+
 import json
-import redis.asyncio as redis
-from dotenv import load_dotenv
+import logging
+from typing import TYPE_CHECKING
 
-load_dotenv(r"C:\Users\soura\ethos\factchecker\.env")
+from backend.config import get_settings
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+if TYPE_CHECKING:
+    import redis.asyncio as redis_type
 
-# Setup robust pure-async Redis connection pool
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+logger = logging.getLogger(__name__)
 
-async def get_cached_feed():
-    """Gets the main dashboard feed if cached."""
-    data = await redis_client.get("news_feed")
+_redis_client = None
+
+
+def _get_client():
+    global _redis_client
+    if _redis_client is None:
+        import redis.asyncio as redis
+        _redis_client = redis.from_url(
+            get_settings().redis_url,
+            decode_responses=True,
+        )
+    return _redis_client
+
+
+# ── Global feed (all users) ────────────────────────────────────────────────
+
+async def get_cached_feed() -> list | None:
+    data = await _get_client().get("feed:global")
     return json.loads(data) if data else None
 
-async def set_cached_feed(feed_data: list):
-    """Caches the completely formatted feed list for 5 minutes."""
-    await redis_client.setex("news_feed", 300, json.dumps(feed_data)) # 300 secs = 5 mins
 
-async def get_cached_article(article_id: str):
-    """Retrieves an exact explicit article from cache instantly."""
-    data = await redis_client.get(f"article:{article_id}")
+async def set_cached_feed(feed_data: list, ttl: int = 300) -> None:
+    await _get_client().setex("feed:global", ttl, json.dumps(feed_data))
+
+
+# ── Per-user personalized feed ─────────────────────────────────────────────
+
+async def get_cached_user_feed(user_id: str) -> list | None:
+    data = await _get_client().get(f"feed:user:{user_id}")
     return json.loads(data) if data else None
 
-async def set_cached_article(article_id: str, article_data: dict):
-    """Caches individually viewed articles for a whole hour to prevent spam hits."""
-    await redis_client.setex(f"article:{article_id}", 3600, json.dumps(article_data)) # 3600 secs = 1 hr
+
+async def set_cached_user_feed(user_id: str, feed_data: list, ttl: int = 120) -> None:
+    await _get_client().setex(f"feed:user:{user_id}", ttl, json.dumps(feed_data))
+
+
+# ── Individual article ─────────────────────────────────────────────────────
+
+async def get_cached_article(article_id: str) -> dict | None:
+    data = await _get_client().get(f"article:{article_id}")
+    return json.loads(data) if data else None
+
+
+async def set_cached_article(article_id: str, article_data: dict, ttl: int = 3600) -> None:
+    await _get_client().setex(f"article:{article_id}", ttl, json.dumps(article_data))
+
+
+# ── Fact-check results ─────────────────────────────────────────────────────
+
+async def get_cached_fact_check(article_id: str) -> dict | None:
+    data = await _get_client().get(f"factcheck:{article_id}")
+    return json.loads(data) if data else None
+
+
+async def set_cached_fact_check(article_id: str, result: dict, ttl: int = 3600) -> None:
+    await _get_client().setex(f"factcheck:{article_id}", ttl, json.dumps(result))
+
+
+# ── Cluster results ────────────────────────────────────────────────────────
+
+async def get_cached_clusters(article_id: str) -> dict | None:
+    data = await _get_client().get(f"clusters:{article_id}")
+    return json.loads(data) if data else None
+
+
+async def set_cached_clusters(article_id: str, result: dict, ttl: int = 1800) -> None:
+    await _get_client().setex(f"clusters:{article_id}", ttl, json.dumps(result))

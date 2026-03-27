@@ -1,8 +1,3 @@
-sqlalchemy
-asyncpg
-greenlet
-redis
-sqlalchemy
-asyncpg
-greenlet
-redis
+# Dependencies are managed via pyproject.toml + uv.
+# To install: uv sync
+# Do not add packages here — add them to pyproject.toml [project.dependencies] instead.

@@ -4,7 +4,6 @@ You are working on the **EthosNews** project. Follow these guidelines strictly f
 
 ## 1. Architectural Integrity & Modularity
 - **Modular Design**: Break down functionality into small, single-purpose modules. Avoid monolithic files.
-- **Microservices-ready**: Structure the backend (FastAPI) to be easily splittable into microservices if needed (e.g., separate ingestion, retrieval, verification).
 - **Consistency**: Maintain consistent file naming (snake_case for Python, camelCase/PascalCase for JS/React) and directory structures.
 
 ## 2. Configuration Management

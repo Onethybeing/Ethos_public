@@ -8,7 +8,7 @@ This repository now uses `uv` for Python dependency management.
 
 ```bash
 uv sync
-```
+```s
 
 This creates `.venv/` and installs dependencies from `pyproject.toml` and `uv.lock`.
 
@@ -17,6 +17,8 @@ This creates `.venv/` and installs dependencies from `pyproject.toml` and `uv.lo
 ```bash
 uv run python -c "from backend.config import get_settings; print(get_settings().app_name)"
 ```
+
+
 
 ### 3) Add new dependencies
 

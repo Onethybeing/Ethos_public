@@ -7,3 +7,6 @@ __pycache__/
 # Environment variables
 .env
 backend/.env
+.github/copilot-instructions.md
+.claude/settings.json
+.github/copilot-instructions.md
