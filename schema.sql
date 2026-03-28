@@ -6,14 +6,16 @@
 -- ============================================================
 
 -- ── users ───────────────────────────────────────────────────
--- Created by auth provider (Clerk/Supabase/etc.) on first sign-in.
+-- Managed by backend auth routes.
 -- user_constitutions and engagement_events both reference this table.
 CREATE TABLE IF NOT EXISTS users (
-    id              VARCHAR         PRIMARY KEY,        -- auth provider user ID
+    id              VARCHAR         PRIMARY KEY,        -- UUID user ID
     username        VARCHAR         UNIQUE NOT NULL,
     display_name    VARCHAR,
     email           VARCHAR         UNIQUE,
+    password_hash   VARCHAR,
     avatar_url      VARCHAR,
+    onboarding_completed BOOLEAN    NOT NULL DEFAULT false,
     is_active       BOOLEAN         NOT NULL DEFAULT true,
     created_at      TIMESTAMPTZ     DEFAULT now(),
     updated_at      TIMESTAMPTZ     DEFAULT now()
