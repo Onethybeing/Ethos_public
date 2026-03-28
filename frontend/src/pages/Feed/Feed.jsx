@@ -18,10 +18,10 @@ export default function Feed() {
   useEffect(() => {
     setLoading(true)
     const fetch = personalized ? getPersonalizedFeed : getFeed
-    fetch().then(data => {
-      setArticles(data || [])
-      setLoading(false)
-    })
+    fetch()
+      .then(data => setArticles(data || []))
+      .catch(() => setArticles([]))
+      .finally(() => setLoading(false))
   }, [personalized])
 
   const filtered = filter === 'All'

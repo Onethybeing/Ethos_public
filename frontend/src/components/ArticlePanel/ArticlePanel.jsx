@@ -6,7 +6,7 @@ import ClaimCard from '../ClaimCard/ClaimCard'
 import ClusterViz from '../ClusterViz/ClusterViz'
 import TerminalStream from '../ui/TerminalStream'
 import Button from '../ui/Button'
-import { factCheckArticle, getClusters, recordEvent } from '../../api/client'
+import { factCheckArticle, getClusters, recordEvent, getArticle } from '../../api/client'
 import { catColor, formatDate } from '../../utils/helpers'
 import styles from './ArticlePanel.module.css'
 
@@ -30,7 +30,18 @@ export default function ArticlePanel({ article, onClose }) {
   const [fcData,   setFcData]   = useState(null)
   const [clState,  setClState]  = useState('idle')
   const [clData,   setClData]   = useState(null)
+  const [content,  setContent]  = useState(article.content || null)
+  const [contentLoading, setContentLoading] = useState(!article.content)
   const openTime = useRef(Date.now())
+
+  // Fetch full article content if not already present
+  useEffect(() => {
+    if (article.content) return
+    getArticle(article.id).then(full => {
+      setContent(full?.content || '')
+      setContentLoading(false)
+    })
+  }, [article.id])
 
   // Keyboard close + read-time tracking
   useEffect(() => {
@@ -122,9 +133,12 @@ export default function ArticlePanel({ article, onClose }) {
 
             {/* Body */}
             <div className={styles.body}>
-              {article.content.split('\n').filter(Boolean).map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
+              {contentLoading
+                ? <p className={styles.loadingText}>Loading article…</p>
+                : content
+                  ? content.split('\n').filter(Boolean).map((para, i) => <p key={i}>{para}</p>)
+                  : <p className={styles.loadingText}>Content unavailable.</p>
+              }
             </div>
 
             {/* ── Fact Check ── */}
