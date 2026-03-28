@@ -45,23 +45,23 @@ async def _update_user_streak(user: User, session) -> None:
 
 
 def _empty_constitution() -> dict:
-    """Return a null-initialized PNC structure for first-time users."""
+    """Return a valid default PNC structure for first-time users."""
     return {
         "epistemic_framework": {
-            "primary_mode": None,
-            "verification_threshold": None,
+            "primary_mode": "empiricist",
+            "verification_threshold": 0.7,
         },
         "narrative_preferences": {
-            "diversity_weight": None,
-            "bias_tolerance": None,
+            "diversity_weight": 0.5,
+            "bias_tolerance": "medium",
         },
         "topical_constraints": {
-            "priority_domains": None,
-            "excluded_topics": None,
+            "priority_domains": [],
+            "excluded_topics": [],
         },
         "complexity_preference": {
-            "readability_depth": None,
-            "data_density": None,
+            "readability_depth": "intermediate",
+            "data_density": "medium",
         },
     }
 

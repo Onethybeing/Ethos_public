@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from backend.core.auth import get_current_user
 from backend.core.db.postgres import AsyncSessionLocal, UserConstitution
@@ -46,6 +46,13 @@ def _assert_user_access(route_user_id: str, current_user: User) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to access another user's constitution.",
         )
+
+
+def _mark_onboarding_completed(db_user: User | None) -> None:
+    """Mark onboarding complete after a successful constitution write."""
+    if db_user and not db_user.onboarding_completed:
+        db_user.onboarding_completed = True
+        db_user.updated_at = datetime.now(timezone.utc)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -91,9 +98,7 @@ async def save_constitution(
             ))
 
         db_user = await session.get(User, user_id)
-        if db_user and not db_user.onboarding_completed:
-            db_user.onboarding_completed = True
-            db_user.updated_at = datetime.now(timezone.utc)
+        _mark_onboarding_completed(db_user)
 
         await session.commit()
 
@@ -113,7 +118,11 @@ async def get_constitution(user_id: str, current_user: User = Depends(get_curren
         raise HTTPException(status_code=404, detail="Constitution not found.")
 
     data = {"user_id": user_id, **record.constitution}
-    return PersonalNewsConstitution(**data)
+    try:
+        return PersonalNewsConstitution(**data)
+    except ValidationError:
+        logger.debug("Constitution for user %s is still uninitialized.", user_id)
+        raise HTTPException(status_code=404, detail="Constitution not found.")
 
 
 @router.patch("/{user_id}", response_model=PersonalNewsConstitution)
@@ -150,9 +159,7 @@ async def update_constitution(
         record.updated_at = datetime.now(timezone.utc)
 
         db_user = await session.get(User, user_id)
-        if db_user and not db_user.onboarding_completed:
-            db_user.onboarding_completed = True
-            db_user.updated_at = datetime.now(timezone.utc)
+        _mark_onboarding_completed(db_user)
 
         await session.commit()
 

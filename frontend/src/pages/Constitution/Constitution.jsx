@@ -12,6 +12,52 @@ const MODES = [
   { id: 'narrative',   icon: '📖', name: 'Narrative',   desc: 'Value contextual storytelling, lived experience, and qualitative framing.' },
 ]
 
+function hasMeaningfulConstitution(constitution) {
+  if (!constitution) return false
+
+  const verificationThreshold = constitution?.epistemic_framework?.verification_threshold
+  const diversityWeight = constitution?.narrative_preferences?.diversity_weight
+  const primaryMode = constitution?.epistemic_framework?.primary_mode
+  const biasTolerance = constitution?.narrative_preferences?.bias_tolerance
+  const readabilityDepth = constitution?.complexity_preference?.readability_depth
+  const dataDensity = constitution?.complexity_preference?.data_density
+  const priorityDomains = constitution?.topical_constraints?.priority_domains
+  const excludedTopics = constitution?.topical_constraints?.excluded_topics
+
+  const hasNumericSignal = typeof verificationThreshold === 'number' || typeof diversityWeight === 'number'
+  const hasChoiceSignal = [primaryMode, biasTolerance, readabilityDepth, dataDensity].some(Boolean)
+  const hasTopicSignal =
+    (Array.isArray(priorityDomains) && priorityDomains.length > 0) ||
+    (Array.isArray(excludedTopics) && excludedTopics.length > 0)
+
+  return hasNumericSignal || hasChoiceSignal || hasTopicSignal
+}
+
+function buildConstitutionFromForm(form, userId) {
+  const cleanPriorityDomains = Array.from(new Set((form.priorities || []).map((item) => String(item).trim()).filter(Boolean)))
+  const cleanExcludedTopics = Array.from(new Set((form.excluded || []).map((item) => String(item).trim()).filter(Boolean)))
+
+  return {
+    user_id: userId || 'new_user',
+    epistemic_framework: {
+      primary_mode: form.mode,
+      verification_threshold: form.vThresh,
+    },
+    narrative_preferences: {
+      diversity_weight: form.divWeight,
+      bias_tolerance: form.biasT,
+    },
+    topical_constraints: {
+      priority_domains: cleanPriorityDomains,
+      excluded_topics: cleanExcludedTopics,
+    },
+    complexity_preference: {
+      readability_depth: form.depth,
+      data_density: form.density,
+    },
+  }
+}
+
 function ArcMeter({ value, color = 'var(--red)', size = 54 }) {
   const r = 20
   const circ = 2 * Math.PI * r
@@ -46,6 +92,7 @@ export default function Constitution({
   const [loading, setLoading] = useState(false)
   const [saved,   setSaved]   = useState(false)
   const [pnc,     setPnc]     = useState(null)
+  const [hydratingExisting, setHydratingExisting] = useState(!onboardingMode)
 
   const [form, setForm] = useState({
     nl: '',
@@ -63,23 +110,48 @@ export default function Constitution({
 
   useEffect(() => {
     getPNC()
-      .then(d => { if (d) setPnc(d) })
+      .then(d => {
+        if (!d) return
+        setPnc(d)
+        if (!onboardingMode && hasMeaningfulConstitution(d)) {
+          setStep(TOTAL_STEPS)
+        }
+      })
       .catch(() => {})
-  }, [])
+      .finally(() => {
+        setHydratingExisting(false)
+      })
+  }, [onboardingMode])
 
   async function generate() {
     setLoading(true)
+    const userId = getCurrentUserId()
+    const questionnaireConstitution = buildConstitutionFromForm(form, userId)
+
     try {
       const d = await generatePNC(form.nl)
-      setPnc(d)
-    } catch {
       setPnc({
-        user_id: getCurrentUserId() || 'new_user',
-        epistemic_framework:    { primary_mode: form.mode, verification_threshold: form.vThresh },
-        narrative_preferences:  { diversity_weight: form.divWeight, bias_tolerance: form.biasT },
-        topical_constraints:    { priority_domains: [...form.priorities], excluded_topics: [...form.excluded] },
-        complexity_preference:  { readability_depth: form.depth, data_density: form.density },
+        ...d,
+        user_id: userId || d?.user_id || 'new_user',
+        epistemic_framework: {
+          ...d?.epistemic_framework,
+          ...questionnaireConstitution.epistemic_framework,
+        },
+        narrative_preferences: {
+          ...d?.narrative_preferences,
+          ...questionnaireConstitution.narrative_preferences,
+        },
+        topical_constraints: {
+          ...d?.topical_constraints,
+          ...questionnaireConstitution.topical_constraints,
+        },
+        complexity_preference: {
+          ...d?.complexity_preference,
+          ...questionnaireConstitution.complexity_preference,
+        },
       })
+    } catch {
+      setPnc(questionnaireConstitution)
     } finally {
       setLoading(false)
       setStep(TOTAL_STEPS)
@@ -90,13 +162,18 @@ export default function Constitution({
     if (!pnc) return
     try {
       await savePNC(pnc)
+      const latest = await getPNC()
+      if (latest) {
+        setPnc(latest)
+      }
       setSaved(true)
       if (onboardingMode && typeof onOnboardingComplete === 'function') {
         await onOnboardingComplete()
       }
       setTimeout(() => setSaved(false), 2200)
-    } catch {
-      alert('Failed to save — backend unavailable.')
+    } catch (err) {
+      const detail = err?.response?.data?.detail
+      alert(typeof detail === 'string' ? `Failed to save: ${detail}` : 'Failed to save constitution.')
     }
   }
 
@@ -114,6 +191,20 @@ export default function Constitution({
   const progressPct = (step / TOTAL_STEPS) * 100
   const currentUser = getCurrentUser()
   const constitutionOwnerName = currentUser?.display_name || currentUser?.username || pnc?.user_id || 'User'
+
+  if (hydratingExisting) {
+    return (
+      <div className={`${styles.page} ${fullScreenMode ? styles.fullscreenPage : ''}`}>
+        <div className={styles.header}>
+          <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--red)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
+            ■ Personal News Constitution
+          </div>
+          <h1 className={styles.pageTitle}>Your Constitution</h1>
+          <p className={styles.subtitle}>Loading your saved constitution…</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`${styles.page} ${fullScreenMode ? styles.fullscreenPage : ''}`}>
@@ -342,7 +433,7 @@ export default function Constitution({
               </Motion.button>
             </div>
             <div className={styles.stepNav} style={{ marginTop: 16 }}>
-              <Button variant="secondary" onClick={() => setStep(0)}>↺ Rebuild</Button>
+              <Button variant="secondary" onClick={() => setStep(0)}>Refill Questionnaire</Button>
             </div>
           </Motion.div>
         )}

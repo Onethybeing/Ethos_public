@@ -112,6 +112,25 @@ _MIGRATIONS: list[tuple[str, str]] = [
         "ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ, "
         "ADD COLUMN IF NOT EXISTS streak_count INTEGER NOT NULL DEFAULT 0"
     )),
+    ("006_backfill_uninitialized_constitutions", (
+        "UPDATE user_constitutions "
+        "SET constitution = '{"
+        "\"epistemic_framework\": {\"primary_mode\": \"empiricist\", \"verification_threshold\": 0.7}, "
+        "\"narrative_preferences\": {\"diversity_weight\": 0.5, \"bias_tolerance\": \"medium\"}, "
+        "\"topical_constraints\": {\"priority_domains\": [], \"excluded_topics\": []}, "
+        "\"complexity_preference\": {\"readability_depth\": \"intermediate\", \"data_density\": \"medium\"}"
+        "}'::jsonb, "
+        "updated_at = now() "
+        "WHERE "
+        "(constitution->'epistemic_framework'->>'primary_mode') IS NULL "
+        "OR (constitution->'epistemic_framework'->>'verification_threshold') IS NULL "
+        "OR (constitution->'narrative_preferences'->>'diversity_weight') IS NULL "
+        "OR (constitution->'narrative_preferences'->>'bias_tolerance') IS NULL "
+        "OR (constitution->'topical_constraints'->'priority_domains') IS NULL "
+        "OR (constitution->'topical_constraints'->'excluded_topics') IS NULL "
+        "OR (constitution->'complexity_preference'->>'readability_depth') IS NULL "
+        "OR (constitution->'complexity_preference'->>'data_density') IS NULL"
+    )),
 ]
 
 
