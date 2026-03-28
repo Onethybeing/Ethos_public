@@ -196,35 +196,64 @@ async def record_engagement(
 
 
 async def get_top_users(limit: int = 50) -> list[dict]:
-    """
-    Fetch the top N users from the Redis leaderboard sorted set,
-    enriched with display_name and avatar_url from the users table.
-
-    Returns list of {rank, user_id, username, display_name, avatar_url, score}.
-    """
-    redis = _cache._get_client()
-    entries = await redis.zrevrange(_LEADERBOARD_KEY, 0, limit - 1, withscores=True)
-    if not entries:
-        return []
-
-    user_ids = [uid for uid, _ in entries]
-
-    # Batch-fetch user profiles
-    async with AsyncSessionLocal() as session:
-        from sqlalchemy import select
-        result = await session.execute(
-            select(User).where(User.id.in_(user_ids))
+    import math
+    from sqlalchemy import select, func
+    from datetime import datetime, timedelta, timezone
+    from backend.config import get_settings
+    
+    settings = get_settings()
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    
+    # Subquery for articles read in the past week
+    article_counts = (
+        select(
+            EngagementEvent.user_id,
+            func.count(EngagementEvent.id).label("weekly_reads")
         )
-        users = {u.id: u for u in result.scalars()}
-
-    return [
-        {
-            "rank": i + 1,
-            "user_id": user_id,
-            "username": users[user_id].username if user_id in users else user_id,
-            "display_name": users[user_id].display_name if user_id in users else None,
-            "avatar_url": users[user_id].avatar_url if user_id in users else None,
-            "score": round(score, 3),
-        }
-        for i, (user_id, score) in enumerate(entries)
-    ]
+        .where(EngagementEvent.created_at >= seven_days_ago)
+        .group_by(EngagementEvent.user_id)
+        .subquery()
+    )
+    
+    query = (
+        select(
+            User,
+            func.coalesce(article_counts.c.weekly_reads, 0).label("weekly_reads")
+        )
+        .outerjoin(article_counts, User.id == article_counts.c.user_id)
+        .where(User.is_active == True)
+    )
+    
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(query)
+        rows = result.all()
+        
+    scored_users = []
+    for user, weekly_reads in rows:
+        streak = getattr(user, 'streak_count', 0)
+        active_parts = getattr(user, 'active_participations', 0)
+        
+        base_points = (weekly_reads * settings.weight_read) + (active_parts * settings.weight_active)
+        streak_multiplier = 1.0 + (math.log10(streak + 1) * settings.weight_streak)
+        score = base_points * streak_multiplier
+        
+        scored_users.append({
+            "user_id": user.id,
+            "username": user.username,
+            "display_name": user.display_name,
+            "avatar_url": user.avatar_url,
+            "streak": streak,
+            "active_participations": active_parts,
+            "weekly_reads": weekly_reads,
+            "score": score,
+        })
+        
+    # Sort by score descending
+    scored_users.sort(key=lambda x: x["score"], reverse=True)
+    
+    # Apply limit and assign ranks
+    top_users = scored_users[:limit]
+    for i, u in enumerate(top_users):
+        u["rank"] = i + 1
+        
+    return top_users

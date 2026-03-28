@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 
+from backend.core.auth import get_current_user
 from backend.core.db import cache
-from backend.core.db.postgres import Article, AsyncSessionLocal
+from backend.core.db.postgres import Article, AsyncSessionLocal, User
 from backend.services.fact_checker.fact_checker_engine import FactChecker
 
 logger = logging.getLogger(__name__)
@@ -47,13 +48,18 @@ def _service_error_detail(exc: Exception) -> str:
 
 
 @router.post("/article/{article_id}/fact-check")
-async def fact_check_article(article_id: str):
+async def fact_check_article(article_id: str, current_user: User = Depends(get_current_user)):
     """
     Fact-check a stored article by its UUID.
 
     Fetches article content from Postgres, runs the parallel agentic pipeline,
     and caches the result in Redis for 1 hour.
     """
+    # Increment counter
+    async with AsyncSessionLocal() as session:
+        await session.execute(update(User).where(User.id == current_user.id).values(active_participations=User.active_participations + 1))
+        await session.commit()
+
     # Redis cache hit
     cached = await cache.get_cached_fact_check(article_id)
     if cached:
@@ -91,13 +97,18 @@ async def fact_check_article(article_id: str):
 
 
 @router.post("/fact-check")
-async def fact_check_text(request: FactCheckTextRequest):
+async def fact_check_text(request: FactCheckTextRequest, current_user: User = Depends(get_current_user)):
     """
     Fact-check arbitrary text (e.g. a pasted news snippet).
     No caching — text is ephemeral.
     """
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
+
+    # Increment counter
+    async with AsyncSessionLocal() as session:
+        await session.execute(update(User).where(User.id == current_user.id).values(active_participations=User.active_participations + 1))
+        await session.commit()
 
     try:
         fact_result = await _get_engine().run_full_pipeline(request.text)

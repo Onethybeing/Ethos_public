@@ -32,6 +32,7 @@ class User(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     streak_count = Column(Integer, nullable=False, default=0)
+    active_participations = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime(timezone=True),
@@ -130,6 +131,10 @@ _MIGRATIONS: list[tuple[str, str]] = [
         "OR (constitution->'topical_constraints'->'excluded_topics') IS NULL "
         "OR (constitution->'complexity_preference'->>'readability_depth') IS NULL "
         "OR (constitution->'complexity_preference'->>'data_density') IS NULL"
+    )),
+    ("007_add_active_participations", (
+        "ALTER TABLE users "
+        "ADD COLUMN IF NOT EXISTS active_participations INTEGER NOT NULL DEFAULT 0"
     )),
 ]
 

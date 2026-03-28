@@ -23,7 +23,7 @@ function RankSymbol({ rank }) {
 export default function Leaderboard({ currentUserId = '' }) {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState(false)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     getLeaderboard()
@@ -43,7 +43,7 @@ export default function Leaderboard({ currentUserId = '' }) {
         </div>
         <h1 className={styles.pageTitle}>The Epistemic Arena</h1>
         <p className={styles.subtitle}>
-          Ranked by verified reading depth, claim evaluation accuracy, and source diversity.
+          Ranked by verified reading habits and active fact-checking behaviors.
         </p>
       </div>
 
@@ -67,9 +67,9 @@ export default function Leaderboard({ currentUserId = '' }) {
             </motion.div>
           </div>
           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--rule)', letterSpacing: '0.1em', textAlign: 'center' }}>
-            {me.user_id}
+            {me.display_name || me.username || me.user_id}
             <div style={{ fontSize: 9, marginTop: 4, color: 'var(--rule)', opacity: 0.7 }}>
-              {me.articles_read} articles · {me.claims_evaluated} claims
+              {me.weekly_reads || 0} articles this week · {me.active_participations || 0} active uses · {me.streak || 0} day streak
             </div>
           </div>
           <div className={styles.myRankWrap}>
@@ -92,8 +92,8 @@ export default function Leaderboard({ currentUserId = '' }) {
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
           : error
-          ? <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: '#c8281e', padding: '24px 0' }}>■ Leaderboard unavailable — backend offline.</div>
-          : entries.map((entry, i) => {
+            ? <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: '#c8281e', padding: '24px 0' }}>■ Leaderboard unavailable — backend offline.</div>
+            : entries.map((entry, i) => {
               const isMe = entry.user_id === currentUserId
               const pct = (entry.score / topScore) * 100
 
@@ -110,7 +110,7 @@ export default function Leaderboard({ currentUserId = '' }) {
 
                   <div className={styles.userInfo}>
                     <div className={styles.username}>
-                      {entry.user_id}
+                      {entry.display_name || entry.username || entry.user_id}
                       {isMe && <span className={styles.youBadge}>YOU</span>}
                     </div>
                     <div className={styles.barTrack}>
@@ -138,9 +138,9 @@ export default function Leaderboard({ currentUserId = '' }) {
       {/* Formula */}
       <div className={styles.formula}>
         <div className={styles.formulaLabel}>■ Scoring Formula</div>
-        <div>Score = (0.4 × Depth) + (0.3 × Claim Accuracy) + (0.2 × Source Diversity) + (0.1 × Streak)</div>
+        <div>Score = [(Articles Read × 1.0) + (Active Uses × 2.5)] × [1.0 + (log₁₀(Streak + 1) × 0.5)]</div>
         <div style={{ color: 'var(--ink-muted)', fontSize: 11, marginTop: 4 }}>
-          Depth = normalized reading time per article · Claim Accuracy = fact-check engagement rate
+          Rewarding consistent daily reading habits and active fact-checking / clustering.
         </div>
       </div>
     </div>

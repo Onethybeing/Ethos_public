@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     scrape_timeout_secs: int = 10
     spacy_char_limit: int = 20_000
 
+    # ── Leaderboard Weights ───────────────────────────────────────────────
+    weight_read: float = 1.0
+    weight_active: float = 2.5
+    weight_streak: float = 0.5
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",

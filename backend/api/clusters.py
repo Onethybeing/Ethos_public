@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy import update
 
+from backend.core.auth import get_current_user
 from backend.core.db import cache
+from backend.core.db.postgres import AsyncSessionLocal, User
 from backend.services.clustering.cluster_engine import ClusterResult, get_narrative_clusters
 
 logger = logging.getLogger(__name__)
@@ -18,7 +21,7 @@ router = APIRouter(tags=["Narrative Clusters"])
 
 
 @router.get("/article/{article_id}/clusters")
-async def get_clusters(article_id: str):
+async def get_clusters(article_id: str, current_user: User = Depends(get_current_user)):
     """
     Map alternative narrative perspectives for a given article.
 
@@ -27,6 +30,11 @@ async def get_clusters(article_id: str):
 
     Cached in Redis for 30 minutes (clusters are stable over that window).
     """
+    # Increment counter
+    async with AsyncSessionLocal() as session:
+        await session.execute(update(User).where(User.id == current_user.id).values(active_participations=User.active_participations + 1))
+        await session.commit()
+
     cached = await cache.get_cached_clusters(article_id)
     if cached:
         return {"source": "redis_cache", **cached}
