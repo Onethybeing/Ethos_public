@@ -1,10 +1,92 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import ClaimCard from '../../components/ClaimCard/ClaimCard'
-import TerminalStream from '../../components/ui/TerminalStream'
+import { Component, Suspense, lazy, useMemo, useRef, useState } from 'react'
 import Button from '../../components/ui/Button'
 import { factCheckText } from '../../api/client'
 import styles from './TruthEngine.module.css'
+
+const ClaimCard = lazy(() => import('../../components/ClaimCard/ClaimCard'))
+const TerminalStream = lazy(() => import('../../components/ui/TerminalStream'))
+
+const PAGE_SIZE = 5
+
+class SectionErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch() {
+    // Contain UI failures locally so the rest of Truth Engine remains usable.
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <p style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: '#c8281e', marginTop: 16 }}>
+          ■ {this.props.fallbackText || 'Section unavailable.'}
+        </p>
+      )
+    }
+    return this.props.children
+  }
+}
+
+function normalizeVerdict(value = '') {
+  const verdict = String(value).toLowerCase()
+  if (verdict === 'supported') return 'supported'
+  if (verdict === 'contradicted') return 'contradicted'
+  return 'not-mentioned'
+}
+
+function normalizeEvaluation(evaluation = {}) {
+  const verdict = normalizeVerdict(evaluation.verdict ?? evaluation.classification)
+  const confidence = Number(evaluation.confidence)
+  return {
+    claim: evaluation.claim ?? 'Unknown claim',
+    verdict,
+    confidence: Number.isFinite(confidence)
+      ? Math.min(Math.max(confidence, 0), 1)
+      : (verdict === 'not-mentioned' ? 0.5 : 0.75),
+    evidence: evaluation.evidence ?? evaluation.explanation ?? 'No evidence text returned.',
+    supporting_urls: Array.isArray(evaluation.supporting_urls) ? evaluation.supporting_urls : [],
+  }
+}
+
+function normalizeFactCheckPayload(payload = {}) {
+  const source = payload.result ?? payload
+  const evaluations = Array.isArray(source.evaluations)
+    ? source.evaluations.map(normalizeEvaluation)
+    : []
+
+  return { evaluations }
+}
+
+function extractErrorMessage(error) {
+  const status = error?.response?.status
+  const payload = error?.response?.data
+  let detail = ''
+
+  if (typeof payload === 'string') {
+    detail = payload
+  } else if (typeof payload?.detail === 'string') {
+    detail = payload.detail
+  } else if (Array.isArray(payload?.detail)) {
+    detail = payload.detail.map(item => item?.msg).filter(Boolean).join('; ')
+  }
+
+  if (status) {
+    return `Verification pipeline failed on backend (HTTP ${status})${detail ? ` — ${detail}` : '.'}`
+  }
+
+  if (error?.code === 'ECONNABORTED') {
+    return 'Verification timed out — backend took too long to respond.'
+  }
+
+  return 'Verification failed — backend unavailable.'
+}
 
 const STREAM_LINES = [
   'Tokenizing input document...',
@@ -23,25 +105,54 @@ export default function TruthEngine() {
   const [text,    setText]    = useState('')
   const [state,   setState]   = useState('idle')
   const [results, setResults] = useState(null)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [page, setPage] = useState(1)
+  const requestIdRef = useRef(0)
+
+  const evaluations = useMemo(
+    () => (Array.isArray(results?.evaluations) ? results.evaluations : []),
+    [results]
+  )
+
+  const counts = useMemo(() => {
+    if (!results) return null
+    return {
+      supported:    evaluations.filter(e => e.verdict === 'supported').length,
+      contradicted: evaluations.filter(e => e.verdict === 'contradicted').length,
+      unverified:   evaluations.filter(e => ['unverified', 'not-mentioned'].includes(e.verdict)).length,
+    }
+  }, [evaluations, results])
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(evaluations.length / PAGE_SIZE)),
+    [evaluations.length]
+  )
+
+  const safePage = Math.min(page, totalPages)
+
+  const paginatedEvaluations = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE
+    return evaluations.slice(start, start + PAGE_SIZE)
+  }, [evaluations, safePage])
 
   async function runCheck() {
     if (!text.trim()) return
+    const requestId = ++requestIdRef.current
     setState('loading')
     setResults(null)
+    setErrorMessage('')
+    setPage(1)
     try {
-      const data = await factCheckText(text)
+      const data = normalizeFactCheckPayload(await factCheckText(text))
+      if (requestId !== requestIdRef.current) return
       setResults(data)
       setState('done')
-    } catch {
+    } catch (error) {
+      if (requestId !== requestIdRef.current) return
+      setErrorMessage(extractErrorMessage(error))
       setState('error')
     }
   }
-
-  const counts = results ? {
-    supported:    results.evaluations.filter(e => e.verdict === 'supported').length,
-    contradicted: results.evaluations.filter(e => e.verdict === 'contradicted').length,
-    unverified:   results.evaluations.filter(e => ['unverified','not-mentioned'].includes(e.verdict)).length,
-  } : null
 
   return (
     <div className={styles.page}>
@@ -63,11 +174,8 @@ export default function TruthEngine() {
       </div>
 
       {/* Input */}
-      <motion.div
+      <div
         className={styles.inputBox}
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className={styles.inputLabel}>
           <div className={styles.inputMark} />
@@ -81,7 +189,7 @@ export default function TruthEngine() {
           rows={6}
         />
         <div className={styles.charCount}>{text.length} characters</div>
-      </motion.div>
+      </div>
 
       {/* Sample chips */}
       <div className={styles.samples}>
@@ -100,25 +208,33 @@ export default function TruthEngine() {
         {state === 'loading' ? '⟳ Analysing…' : '⚡ Verify Claims'}
       </Button>
 
-      {state === 'loading' && <TerminalStream lines={STREAM_LINES} />}
+      {state === 'loading' && (
+        <Suspense
+          fallback={
+            <p style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--ink-muted)', marginTop: 16 }}>
+              Preparing verification stream…
+            </p>
+          }
+        >
+          <SectionErrorBoundary fallbackText="Verification stream unavailable.">
+            <TerminalStream lines={STREAM_LINES} />
+          </SectionErrorBoundary>
+        </Suspense>
+      )}
       {state === 'error' && (
         <p style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: '#c8281e', marginTop: 16 }}>
-          ■ Verification failed — backend unavailable.
+          ■ {errorMessage || 'Verification failed — backend unavailable.'}
         </p>
       )}
 
       {/* Results */}
       {state === 'done' && results && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
+        <div>
           <div className={styles.sectionDiv}>
             <div className={styles.sectionHeavy} />
             <div className={styles.sectionLabel}>
               <div className={styles.sectionMark} />
-              {results.evaluations.length} Claims Evaluated
+              {evaluations.length} Claims Evaluated
             </div>
             <div className={styles.sectionHeavy} />
           </div>
@@ -135,10 +251,44 @@ export default function TruthEngine() {
             </div>
           </div>
 
-          {results.evaluations.map((ev, i) => (
-            <ClaimCard key={i} evaluation={ev} index={i} />
-          ))}
-        </motion.div>
+          <SectionErrorBoundary fallbackText="A claim card failed to render.">
+            <Suspense
+              fallback={
+                <p style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--ink-muted)', marginTop: 16 }}>
+                  Loading claim cards…
+                </p>
+              }
+            >
+              {paginatedEvaluations.map((ev, i) => (
+                <SectionErrorBoundary key={`${ev.claim}-${i}`} fallbackText={`Claim ${i + 1} unavailable.`}>
+                  <ClaimCard evaluation={ev} index={i} />
+                </SectionErrorBoundary>
+              ))}
+            </Suspense>
+          </SectionErrorBoundary>
+
+          {evaluations.length > PAGE_SIZE && (
+            <div className={styles.samples} style={{ marginTop: 12 }}>
+              <button
+                className={styles.sampleChip}
+                disabled={safePage === 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Prev
+              </button>
+              <button className={styles.sampleChip} disabled>
+                Page {safePage} / {totalPages}
+              </button>
+              <button
+                className={styles.sampleChip}
+                disabled={safePage === totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

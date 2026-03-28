@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # Comma-separated allowed CORS origins (e.g. "http://localhost:3000,https://app.ethosnews.com")
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
     # ── Ingestion tuning ───────────────────────────────────────────────────
     gdelt_poll_interval_secs: int = 60

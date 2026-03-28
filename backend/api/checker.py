@@ -35,6 +35,17 @@ class FactCheckTextRequest(BaseModel):
     text: str
 
 
+def _service_error_detail(exc: Exception) -> str:
+    message = str(exc).strip() or exc.__class__.__name__
+    lowered = message.lower()
+
+    if any(token in lowered for token in ("api key", "authentication", "unauthorized", "forbidden")):
+        return "Fact-check model provider is not configured or rejected credentials."
+    if any(token in lowered for token in ("qdrant", "connection refused", "timed out", "timeout", "dns")):
+        return "Evidence service is unavailable. Check Qdrant connectivity/config."
+    return f"Fact-check pipeline unavailable: {message}"
+
+
 @router.post("/article/{article_id}/fact-check")
 async def fact_check_article(article_id: str):
     """
@@ -61,10 +72,19 @@ async def fact_check_article(article_id: str):
     if not article.content or not article.content.strip():
         raise HTTPException(status_code=422, detail="Article has no content to fact-check.")
 
-    fact_result = await _get_engine().run_full_pipeline(article.content)
+    try:
+        fact_result = await _get_engine().run_full_pipeline(article.content)
+    except Exception as exc:
+        logger.exception("Fact-check pipeline failed for article_id=%s", article_id)
+        raise HTTPException(status_code=503, detail=_service_error_detail(exc)) from exc
+
     result_dict = fact_result.model_dump()
 
-    await cache.set_cached_fact_check(article_id, result_dict)
+    try:
+        await cache.set_cached_fact_check(article_id, result_dict)
+    except Exception:
+        logger.exception("Failed to cache fact-check result for article_id=%s", article_id)
+
     return {"source": "pipeline", "article_id": article_id, "result": result_dict}
 
 
@@ -77,5 +97,9 @@ async def fact_check_text(request: FactCheckTextRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
 
-    fact_result = await _get_engine().run_full_pipeline(request.text)
-    return {"source": "pipeline", "result": fact_result.model_dump()}
+    try:
+        fact_result = await _get_engine().run_full_pipeline(request.text)
+        return {"source": "pipeline", "result": fact_result.model_dump()}
+    except Exception as exc:
+        logger.exception("Fact-check pipeline failed for ad-hoc text request.")
+        raise HTTPException(status_code=503, detail=_service_error_detail(exc)) from exc

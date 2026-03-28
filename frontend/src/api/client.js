@@ -2,11 +2,44 @@ import axios from 'axios';
 
 export const USER_ID = 'demo_user';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+
 const client = axios.create({
-  baseURL: '',
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });
+
+function normalizeVerdict(classification = '') {
+  const normalized = String(classification).toLowerCase();
+  if (normalized === 'supported') return 'supported';
+  if (normalized === 'contradicted') return 'contradicted';
+  return 'not-mentioned';
+}
+
+function normalizeEvaluation(evaluation = {}) {
+  const verdict = normalizeVerdict(evaluation.classification ?? evaluation.verdict);
+  return {
+    claim: evaluation.claim ?? '',
+    verdict,
+    confidence: typeof evaluation.confidence === 'number'
+      ? evaluation.confidence
+      : (verdict === 'not-mentioned' ? 0.5 : 0.75),
+    evidence: evaluation.evidence ?? evaluation.explanation ?? '',
+    supporting_urls: Array.isArray(evaluation.supporting_urls) ? evaluation.supporting_urls : [],
+  };
+}
+
+function normalizeFactCheckResponse(payload = {}) {
+  const result = payload.result ?? payload;
+  const evaluations = Array.isArray(result.evaluations)
+    ? result.evaluations.map(normalizeEvaluation)
+    : [];
+  return {
+    ...result,
+    evaluations,
+  };
+}
 
 export async function getFeed() {
   const { data } = await client.get('/feed');
@@ -24,13 +57,17 @@ export async function getArticle(id) {
 }
 
 export async function factCheckArticle(id) {
-  const { data } = await client.post(`/article/${id}/fact-check`);
-  return data;
+  const { data } = await client.post(`/article/${id}/fact-check`, undefined, {
+    timeout: 60000,
+  });
+  return normalizeFactCheckResponse(data);
 }
 
 export async function factCheckText(text) {
-  const { data } = await client.post('/fact-check', { text });
-  return data;
+  const { data } = await client.post('/fact-check', { text }, {
+    timeout: 60000,
+  });
+  return normalizeFactCheckResponse(data);
 }
 
 export async function getClusters(id) {

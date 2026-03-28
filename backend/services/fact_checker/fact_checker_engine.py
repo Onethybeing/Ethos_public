@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -72,7 +73,7 @@ class FactChecker:
         "   do NOT use outside knowledge.\n"
         "4. For numbers: if evidence states a DIFFERENT number, label 'Contradicted'.\n"
         "5. For 'Supported'/'Contradicted': include exact source_url(s) in supporting_urls.\n"
-        "6. For 'Not Mentioned': leave supporting_urls empty."
+        "6. For 'Not Mentioned': include the most relevant evidence source_url(s) for traceability when available."
     )
 
     def __init__(self) -> None:
@@ -80,58 +81,111 @@ class FactChecker:
         self._collection = settings.qdrant_collection
         logger.info("FactChecker initialized.")
 
+    @staticmethod
+    def _extract_urls_from_evidence(evidence: list[dict], max_urls: int = 4) -> list[str]:
+        urls: list[str] = []
+        for item in evidence:
+            source_url = str(item.get("source_url", "")).strip()
+            if source_url and source_url not in urls:
+                urls.append(source_url)
+            if len(urls) >= max_urls:
+                break
+        return urls
+
+    @staticmethod
+    def _fallback_extract_claims(text: str, max_claims: int = 8) -> list[str]:
+        """Extract simple sentence-level claims when LLM extraction is unavailable."""
+        sentences = [
+            part.strip()
+            for part in re.split(r"(?<=[.!?])\s+", text)
+            if part and part.strip()
+        ]
+        return sentences[:max_claims]
+
     async def extract_claims(self, text: str) -> list[str]:
         """Step 1: Break article into atomic factual claims."""
         logger.debug("Extracting claims…")
-        raw = await get_llm().chat(
-            messages=[
-                {"role": "system", "content": self._CLAIM_EXTRACTION_PROMPT},
-                {"role": "user", "content": f"TEXT:\n{text}"},
-            ],
-            json_schema=ClaimList.model_json_schema(),
-            temperature=0.0,
-            model_tier="fast",
-        )
-        claims = json.loads(raw).get("claims", [])
+        try:
+            raw = await get_llm().chat(
+                messages=[
+                    {"role": "system", "content": self._CLAIM_EXTRACTION_PROMPT},
+                    {"role": "user", "content": f"TEXT:\n{text}"},
+                ],
+                json_schema=ClaimList.model_json_schema(),
+                temperature=0.0,
+                model_tier="fast",
+            )
+            claims = json.loads(raw).get("claims", [])
+        except Exception as exc:
+            logger.exception("LLM claim extraction failed; using fallback extractor.")
+            claims = self._fallback_extract_claims(text)
+
+        claims = [c for c in claims if isinstance(c, str) and c.strip()]
         logger.info("Extracted %d claims.", len(claims))
         return claims
 
     def retrieve_evidence(self, claim: str, limit: int = 4) -> list[dict]:
         """Step 2: Semantic search in Qdrant for articles relevant to the claim."""
-        query_vector = get_encoder().encode(claim).tolist()
-        hits = get_qdrant().query_points(
-            collection_name=self._collection,
-            query=query_vector,
-            limit=limit,
-        ).points
-        return [
-            {
-                "source_url": hit.payload.get("source", ""),
-                "content": hit.payload.get("content", "")[:500],
-            }
-            for hit in hits
-        ]
+        try:
+            query_vector = get_encoder().encode(claim).tolist()
+            hits = get_qdrant().query_points(
+                collection_name=self._collection,
+                query=query_vector,
+                limit=limit,
+            ).points
+            return [
+                {
+                    "source_url": hit.payload.get("source", ""),
+                    "content": hit.payload.get("content", "")[:500],
+                }
+                for hit in hits
+            ]
+        except Exception:
+            logger.exception("Evidence retrieval failed for claim.")
+            return []
 
     async def classify_claim(self, claim: str, evidence: list[dict]) -> ClaimEvaluation:
         """Step 3: LLM judges claim vs evidence."""
         user_prompt = (
             f"CLAIM: {claim}\n\nPROVIDED EVIDENCE:\n{json.dumps(evidence, indent=2)}"
         )
-        raw = await get_llm().chat(
-            messages=[
-                {"role": "system", "content": self._CLASSIFICATION_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            json_schema=ClaimEvaluation.model_json_schema(),
-            temperature=0.0,
-            model_tier="fast",
-        )
-        return ClaimEvaluation(**json.loads(raw))
+        evidence_urls = self._extract_urls_from_evidence(evidence)
+        try:
+            raw = await get_llm().chat(
+                messages=[
+                    {"role": "system", "content": self._CLASSIFICATION_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                json_schema=ClaimEvaluation.model_json_schema(),
+                temperature=0.0,
+                model_tier="fast",
+            )
+            evaluation = ClaimEvaluation(**json.loads(raw))
+            if not evaluation.supporting_urls and evidence_urls:
+                evaluation.supporting_urls = evidence_urls
+            return evaluation
+        except Exception:
+            logger.exception("Claim classification failed for claim.")
+            return ClaimEvaluation(
+                claim=claim,
+                classification="Not Mentioned",
+                explanation="Classification unavailable due to temporary model/service error.",
+                supporting_urls=evidence_urls,
+            )
 
     async def _evaluate_claim(self, claim: str) -> ClaimEvaluation:
         """Retrieve evidence and classify a single claim (used for parallel execution)."""
-        evidence = self.retrieve_evidence(claim)  # sync Qdrant call — fast
-        return await self.classify_claim(claim, evidence)
+        try:
+            evidence = self.retrieve_evidence(claim)  # sync Qdrant call — fast
+            return await self.classify_claim(claim, evidence)
+        except Exception:
+            logger.exception("Unexpected per-claim evaluation failure.")
+            return ClaimEvaluation(
+                claim=claim,
+                classification="Not Mentioned",
+                explanation="Evaluation failed for this claim due to temporary backend error.",
+                supporting_urls=[],
+            )
 
     async def run_full_pipeline(self, input_text: str) -> FinalFactCheckResult:
         """
@@ -147,7 +201,8 @@ class FactChecker:
 
         # Evaluate all claims concurrently
         evaluations = await asyncio.gather(
-            *[self._evaluate_claim(claim) for claim in claims]
+            *[self._evaluate_claim(claim) for claim in claims],
+            return_exceptions=False,
         )
 
         logger.info("Fact-check complete: %d claims evaluated.", len(evaluations))
