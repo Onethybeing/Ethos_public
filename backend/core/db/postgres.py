@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, Float, String, Text, DateTime, text
+from sqlalchemy import Boolean, Column, Float, String, Text, DateTime, Integer, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -30,6 +30,8 @@ class User(Base):
     avatar_url = Column(String, nullable=True)
     onboarding_completed = Column(Boolean, nullable=False, default=False)
     is_active = Column(Boolean, nullable=False, default=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    streak_count = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime(timezone=True),
@@ -104,6 +106,11 @@ _MIGRATIONS: list[tuple[str, str]] = [
         "ALTER TABLE users "
         "ADD COLUMN IF NOT EXISTS password_hash VARCHAR, "
         "ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE"
+    )),
+    ("005_add_streak", (
+        "ALTER TABLE users "
+        "ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ, "
+        "ADD COLUMN IF NOT EXISTS streak_count INTEGER NOT NULL DEFAULT 0"
     )),
 ]
 

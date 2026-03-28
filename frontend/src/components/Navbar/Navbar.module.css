@@ -60,6 +60,21 @@
   font-weight: 700;
 }
 
+.streakBadge {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--red);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  text-transform: uppercase;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
 .logoutBtn {
   border: 1px solid var(--rule);
   background: transparent;

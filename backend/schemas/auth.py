@@ -28,6 +28,7 @@ class UserProfileResponse(BaseModel):
     email: str | None = None
     display_name: str | None = None
     onboarding_completed: bool
+    streak_count: int = 0
 
 
 class AuthResponse(BaseModel):
