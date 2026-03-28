@@ -12,12 +12,13 @@ import datetime
 import logging
 import math
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, or_, select
 
 from backend.core.clients import get_encoder, get_qdrant
+from backend.core.auth import get_current_user
 from backend.core.db import cache
-from backend.core.db.postgres import Article, AsyncSessionLocal, UserConstitution
+from backend.core.db.postgres import Article, AsyncSessionLocal, User, UserConstitution
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,7 @@ async def get_article(article_id: str):
 
 
 @router.get("/personalized_feed/{user_id}")
-async def get_personalized_feed(user_id: str):
+async def get_personalized_feed(user_id: str, current_user: User = Depends(get_current_user)):
     """
     PNC-filtered, recency-weighted personalized feed.
 
@@ -82,6 +83,12 @@ async def get_personalized_feed(user_id: str):
 
     Cached per-user for 2 minutes.
     """
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to access another user's feed.",
+        )
+
     cached = await cache.get_cached_user_feed(user_id)
     if cached:
         return {"source": "redis_cache", "user_id": user_id, "data": cached}

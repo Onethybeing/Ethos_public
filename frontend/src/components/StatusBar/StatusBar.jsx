@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
-import { USER_ID } from '../../api/client'
 import styles from './StatusBar.module.css'
 
-export default function StatusBar() {
+export default function StatusBar({ currentUserId = 'anonymous' }) {
   const [time, setTime] = useState(new Date())
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -20,7 +19,7 @@ export default function StatusBar() {
         GDELT LIVE
       </div>
       <div className={styles.item}>
-        USER · {USER_ID}
+        USER · {currentUserId}
       </div>
       <div className={`${styles.item} ${styles.right}`}>
         ETHOSNEWS v1.0 · {time.toLocaleTimeString('en-GB', { hour12: false })}

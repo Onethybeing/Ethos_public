@@ -22,11 +22,13 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, index=True)  # auth provider ID (Clerk/Supabase/etc.)
+    id = Column(String, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False, index=True)
     display_name = Column(String, nullable=True)
     email = Column(String, unique=True, nullable=True, index=True)
+    password_hash = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
+    onboarding_completed = Column(Boolean, nullable=False, default=False)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
@@ -97,6 +99,11 @@ _MIGRATIONS: list[tuple[str, str]] = [
     ("003_constitution_not_null", (
         "UPDATE user_constitutions SET constitution = '{}' WHERE constitution IS NULL;"
         "ALTER TABLE user_constitutions ALTER COLUMN constitution SET NOT NULL"
+    )),
+    ("004_add_user_auth_columns", (
+        "ALTER TABLE users "
+        "ADD COLUMN IF NOT EXISTS password_hash VARCHAR, "
+        "ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE"
     )),
 ]
 

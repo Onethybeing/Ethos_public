@@ -35,6 +35,44 @@ cp backend/.env.example backend/.env
 uv run uvicorn backend.main:app --reload --port 8000
 ```
 
+### Auth environment variables
+
+Add these in `backend/.env`:
+
+```dotenv
+JWT_SECRET=replace_with_long_random_secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXP_MINUTES=1440
+```
+
+## Auth + Onboarding Flow
+
+The app now uses JWT auth and first-run onboarding.
+
+1. `POST /auth/signup` or `POST /auth/login`
+2. Store `access_token` and send it as `Authorization: Bearer <token>`
+3. `GET /onboarding/status`
+4. If not completed:
+   - `GET /onboarding/questions`
+   - `POST /onboarding/submit` with all answers in one payload
+5. Once completed, user-specific routes are available:
+   - `GET /personalized_feed/{user_id}`
+   - `GET /pnc/{user_id}`
+   - `POST /pnc/{user_id}`
+   - `PATCH /pnc/{user_id}`
+
+### Auth endpoints
+
+- `POST /auth/signup`
+- `POST /auth/login`
+- `GET /auth/me` (JWT required)
+
+### Onboarding endpoints
+
+- `GET /onboarding/questions`
+- `GET /onboarding/status` (JWT required)
+- `POST /onboarding/submit` (JWT required)
+
 ### Add a new Python dependency
 
 ```bash
@@ -72,7 +110,7 @@ npm run dev
 
 ## Project Structure
 
-```
+```text
 ethos/
 ├── backend/
 │   ├── main.py              # FastAPI app entry point

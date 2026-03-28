@@ -49,9 +49,31 @@
   letter-spacing: 0.04em;
 }
 
+.metaRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .metaUser span {
   color: var(--red);
   font-weight: 700;
+}
+
+.logoutBtn {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+}
+
+.logoutBtn:hover {
+  border-color: var(--ink);
+  color: var(--ink);
 }
 
 /* ── Row 2: Masthead ── */

@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
 
+    # ── Auth ───────────────────────────────────────────────────────────────
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
+    access_token_exp_minutes: int = 60 * 24
+
     # ── LLM — single toggle to switch providers ────────────────────────────
     llm_provider: Literal["groq", "openai", "gemini"] = "groq"
 

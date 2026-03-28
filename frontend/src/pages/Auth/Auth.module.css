@@ -1,0 +1,74 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: min(520px, 100%);
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kicker {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+.title {
+  font-size: 34px;
+  line-height: 1.06;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+
+.label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}
+
+.input {
+  border: 1px solid var(--rule);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 14px;
+  padding: 10px 12px;
+}
+
+.input:focus {
+  border-color: var(--ink);
+  outline: none;
+}
+
+.actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.error {
+  border: 1px solid var(--red);
+  background: var(--red-dim);
+  color: var(--red);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  padding: 8px 10px;
+}

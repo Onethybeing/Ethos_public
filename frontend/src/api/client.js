@@ -1,13 +1,65 @@
 import axios from 'axios';
 
-export const USER_ID = 'demo_user';
-
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const AUTH_TOKEN_KEY = 'ethos_access_token';
+const AUTH_USER_KEY = 'ethos_user';
 
 const client = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
+});
+
+function readStoredJSON(key) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+export function getAccessToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY) || '';
+}
+
+export function hasAccessToken() {
+  return Boolean(getAccessToken());
+}
+
+export function getCurrentUser() {
+  return readStoredJSON(AUTH_USER_KEY);
+}
+
+export function getCurrentUserId() {
+  return getCurrentUser()?.id || '';
+}
+
+export function setAuthSession(authData = {}) {
+  if (authData.access_token) {
+    localStorage.setItem(AUTH_TOKEN_KEY, authData.access_token);
+  }
+  if (authData.user) {
+    writeStoredJSON(AUTH_USER_KEY, authData.user);
+  }
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+}
+
+client.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 function normalizeVerdict(classification = '') {
@@ -46,8 +98,9 @@ export async function getFeed() {
   return data.data ?? data;
 }
 
-export async function getPersonalizedFeed() {
-  const { data } = await client.get(`/personalized_feed/${USER_ID}`);
+export async function getPersonalizedFeed(userId = getCurrentUserId()) {
+  if (!userId) throw new Error('No authenticated user found.');
+  const { data } = await client.get(`/personalized_feed/${userId}`);
   return data.data ?? data;
 }
 
@@ -75,21 +128,24 @@ export async function getClusters(id) {
   return data;
 }
 
-export async function generatePNC(naturalLanguage) {
+export async function generatePNC(naturalLanguage, userId = getCurrentUserId()) {
+  if (!userId) throw new Error('No authenticated user found.');
   const { data } = await client.post('/pnc/generate', {
     natural_language: naturalLanguage,
-    user_id: USER_ID,
+    user_id: userId,
   });
   return data;
 }
 
-export async function getPNC() {
-  const { data } = await client.get(`/pnc/${USER_ID}`);
+export async function getPNC(userId = getCurrentUserId()) {
+  if (!userId) throw new Error('No authenticated user found.');
+  const { data } = await client.get(`/pnc/${userId}`);
   return data;
 }
 
-export async function savePNC(pncData) {
-  const { data } = await client.post(`/pnc/${USER_ID}`, pncData);
+export async function savePNC(pncData, userId = getCurrentUserId()) {
+  if (!userId) throw new Error('No authenticated user found.');
+  const { data } = await client.post(`/pnc/${userId}`, pncData);
   return data;
 }
 
@@ -99,10 +155,53 @@ export async function getLeaderboard(limit = 10) {
 }
 
 export async function recordEvent(articleId, timeSpentSecs) {
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error('No authenticated user found.');
+
   const { data } = await client.post('/leaderboard/event', {
-    user_id: USER_ID,
+    user_id: userId,
     article_id: articleId,
     time_spent_secs: timeSpentSecs,
   });
+  return data;
+}
+
+export async function signup(payload) {
+  const { data } = await client.post('/auth/signup', payload);
+  setAuthSession(data);
+  return data;
+}
+
+export async function login(payload) {
+  const { data } = await client.post('/auth/login', payload);
+  setAuthSession(data);
+  return data;
+}
+
+export async function getMe() {
+  const { data } = await client.get('/auth/me');
+  writeStoredJSON(AUTH_USER_KEY, data);
+  return data;
+}
+
+export async function getOnboardingQuestions() {
+  const { data } = await client.get('/onboarding/questions');
+  return data;
+}
+
+export async function getOnboardingStatus() {
+  const { data } = await client.get('/onboarding/status');
+  return data;
+}
+
+export async function submitOnboarding(answers) {
+  const { data } = await client.post('/onboarding/submit', { answers });
+  const currentUser = getCurrentUser();
+  if (currentUser) {
+    writeStoredJSON(AUTH_USER_KEY, {
+      ...currentUser,
+      onboarding_completed: true,
+    });
+  }
   return data;
 }

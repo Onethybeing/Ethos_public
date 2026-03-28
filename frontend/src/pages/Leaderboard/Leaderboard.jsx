@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { getLeaderboard, USER_ID } from '../../api/client'
+import { getLeaderboard } from '../../api/client'
 import { SkeletonRow } from '../../components/ui/Skeleton'
 import styles from './Leaderboard.module.css'
 
@@ -20,7 +20,7 @@ function RankSymbol({ rank }) {
   return <span className={styles.rank}>{rank}</span>
 }
 
-export default function Leaderboard() {
+export default function Leaderboard({ currentUserId = '' }) {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(false)
@@ -32,7 +32,7 @@ export default function Leaderboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  const me = entries.find(e => e.user_id === USER_ID)
+  const me = entries.find(e => e.user_id === currentUserId)
   const topScore = entries.length > 0 ? entries[0].score : 100
 
   return (
@@ -75,7 +75,7 @@ export default function Leaderboard() {
           <div className={styles.myRankWrap}>
             <div className={styles.myRankLabel}>■ Your Rank</div>
             <div className={styles.myRankNum}>
-              #{entries.findIndex(e => e.user_id === USER_ID) + 1}
+              #{entries.findIndex(e => e.user_id === currentUserId) + 1}
             </div>
           </div>
         </motion.div>
@@ -94,7 +94,7 @@ export default function Leaderboard() {
           : error
           ? <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: '#c8281e', padding: '24px 0' }}>■ Leaderboard unavailable — backend offline.</div>
           : entries.map((entry, i) => {
-              const isMe = entry.user_id === USER_ID
+              const isMe = entry.user_id === currentUserId
               const pct = (entry.score / topScore) * 100
 
               return (

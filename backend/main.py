@@ -21,6 +21,8 @@ from backend.core.db.postgres import init_db
 # API routers
 from backend.api.feed import router as feed_router
 from backend.api.checker import router as checker_router
+from backend.api.auth import router as auth_router
+from backend.api.onboarding import router as onboarding_router
 from backend.api.pnc import router as pnc_router
 from backend.api.clusters import router as clusters_router
 from backend.api.leaderboard import router as leaderboard_router
@@ -70,6 +72,8 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(feed_router)
     app.include_router(checker_router)
+    app.include_router(auth_router)
+    app.include_router(onboarding_router)
     app.include_router(pnc_router)
     app.include_router(clusters_router)
     app.include_router(leaderboard_router)

@@ -12,10 +12,12 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from backend.core.auth import get_current_user
 from backend.core.db.postgres import AsyncSessionLocal, UserConstitution
+from backend.core.db.postgres import User
 from backend.schemas.pnc import PersonalNewsConstitution
 from backend.services.pnc_service import generate_pnc
 
@@ -38,6 +40,14 @@ class PatchRequest(BaseModel):
     complexity_preference: dict | None = None
 
 
+def _assert_user_access(route_user_id: str, current_user: User) -> None:
+    if route_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to access another user's constitution.",
+        )
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/generate", response_model=PersonalNewsConstitution)
@@ -56,12 +66,17 @@ async def generate_constitution(request: GenerateRequest):
 
 
 @router.post("/{user_id}", response_model=PersonalNewsConstitution)
-async def save_constitution(user_id: str, pnc: PersonalNewsConstitution):
+async def save_constitution(
+    user_id: str,
+    pnc: PersonalNewsConstitution,
+    current_user: User = Depends(get_current_user),
+):
     """
     Save or replace a user's Personal News Constitution.
 
     The request body must be a complete PersonalNewsConstitution JSON.
     """
+    _assert_user_access(user_id, current_user)
     pnc.user_id = user_id  # ensure URL param takes precedence
 
     async with AsyncSessionLocal() as session:
@@ -74,6 +89,12 @@ async def save_constitution(user_id: str, pnc: PersonalNewsConstitution):
                 user_id=user_id,
                 constitution=pnc.model_dump(exclude={"user_id"}),
             ))
+
+        db_user = await session.get(User, user_id)
+        if db_user and not db_user.onboarding_completed:
+            db_user.onboarding_completed = True
+            db_user.updated_at = datetime.now(timezone.utc)
+
         await session.commit()
 
     logger.info("Saved PNC for user %s.", user_id)
@@ -81,8 +102,10 @@ async def save_constitution(user_id: str, pnc: PersonalNewsConstitution):
 
 
 @router.get("/{user_id}", response_model=PersonalNewsConstitution)
-async def get_constitution(user_id: str):
+async def get_constitution(user_id: str, current_user: User = Depends(get_current_user)):
     """Fetch a user's stored Personal News Constitution."""
+    _assert_user_access(user_id, current_user)
+
     async with AsyncSessionLocal() as session:
         record = await session.get(UserConstitution, user_id)
 
@@ -94,13 +117,19 @@ async def get_constitution(user_id: str):
 
 
 @router.patch("/{user_id}", response_model=PersonalNewsConstitution)
-async def update_constitution(user_id: str, patch: PatchRequest):
+async def update_constitution(
+    user_id: str,
+    patch: PatchRequest,
+    current_user: User = Depends(get_current_user),
+):
     """
     Partial update of a user's constitution.
 
     Supports the user feedback loop (Stage 11 in the spec): only the provided
     fields are merged into the existing constitution.
     """
+    _assert_user_access(user_id, current_user)
+
     async with AsyncSessionLocal() as session:
         record = await session.get(UserConstitution, user_id)
         if not record:
@@ -119,6 +148,12 @@ async def update_constitution(user_id: str, patch: PatchRequest):
 
         record.constitution = existing
         record.updated_at = datetime.now(timezone.utc)
+
+        db_user = await session.get(User, user_id)
+        if db_user and not db_user.onboarding_completed:
+            db_user.onboarding_completed = True
+            db_user.updated_at = datetime.now(timezone.utc)
+
         await session.commit()
 
         logger.info("Patched PNC for user %s: %s", user_id, list(updates.keys()))

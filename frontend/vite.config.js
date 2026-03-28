@@ -7,6 +7,8 @@ export default defineConfig({
     proxy: {
       '/feed': 'http://localhost:8000',
       '/article': 'http://localhost:8000',
+      '/auth': 'http://localhost:8000',
+      '/onboarding': 'http://localhost:8000',
       '/pnc': 'http://localhost:8000',
       '/fact-check': 'http://localhost:8000',
       '/leaderboard': 'http://localhost:8000',

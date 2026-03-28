@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion as Motion, AnimatePresence } from 'framer-motion'
 import Button from '../../components/ui/Button'
-import { generatePNC, getPNC, savePNC, USER_ID } from '../../api/client'
+import { generatePNC, getCurrentUser, getCurrentUserId, getPNC, savePNC } from '../../api/client'
 import styles from './Constitution.module.css'
 
 const TOTAL_STEPS = 4
@@ -18,7 +18,7 @@ function ArcMeter({ value, color = 'var(--red)', size = 54 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 54 54">
       <circle cx="27" cy="27" r={r} fill="none" stroke="var(--rule-light)" strokeWidth="4" />
-      <motion.circle
+      <Motion.circle
         cx="27" cy="27" r={r}
         fill="none" stroke={color} strokeWidth="4"
         strokeDasharray={circ}
@@ -36,7 +36,12 @@ function ArcMeter({ value, color = 'var(--red)', size = 54 }) {
   )
 }
 
-export default function Constitution() {
+export default function Constitution({
+  onboardingMode = false,
+  fullScreenMode = false,
+  onSkipOnboarding = null,
+  onOnboardingComplete = null,
+}) {
   const [step,    setStep]    = useState(0)
   const [loading, setLoading] = useState(false)
   const [saved,   setSaved]   = useState(false)
@@ -69,7 +74,7 @@ export default function Constitution() {
       setPnc(d)
     } catch {
       setPnc({
-        user_id: USER_ID,
+        user_id: getCurrentUserId() || 'new_user',
         epistemic_framework:    { primary_mode: form.mode, verification_threshold: form.vThresh },
         narrative_preferences:  { diversity_weight: form.divWeight, bias_tolerance: form.biasT },
         topical_constraints:    { priority_domains: [...form.priorities], excluded_topics: [...form.excluded] },
@@ -86,6 +91,9 @@ export default function Constitution() {
     try {
       await savePNC(pnc)
       setSaved(true)
+      if (onboardingMode && typeof onOnboardingComplete === 'function') {
+        await onOnboardingComplete()
+      }
       setTimeout(() => setSaved(false), 2200)
     } catch {
       alert('Failed to save — backend unavailable.')
@@ -104,16 +112,25 @@ export default function Constitution() {
   }
 
   const progressPct = (step / TOTAL_STEPS) * 100
+  const currentUser = getCurrentUser()
+  const constitutionOwnerName = currentUser?.display_name || currentUser?.username || pnc?.user_id || 'User'
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${fullScreenMode ? styles.fullscreenPage : ''}`}>
       <div className={styles.header}>
+        {onboardingMode && typeof onSkipOnboarding === 'function' && (
+          <div className={styles.onboardingActions}>
+            <Button variant="secondary" onClick={onSkipOnboarding}>Skip for now</Button>
+          </div>
+        )}
         <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--red)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
-          ■ Personal News Constitution
+          ■ {onboardingMode ? 'First-Time Setup' : 'Personal News Constitution'}
         </div>
         <h1 className={styles.pageTitle}>Your Constitution</h1>
         <p className={styles.subtitle}>
-          Define your epistemic relationship with information.
+          {onboardingMode
+            ? 'Complete this once to start using your personalized feed.'
+            : 'Define your epistemic relationship with information.'}
         </p>
       </div>
 
@@ -121,7 +138,7 @@ export default function Constitution() {
       {step < TOTAL_STEPS && (
         <div className={styles.progressWrap}>
           <div className={styles.progressTrack}>
-            <motion.div
+            <Motion.div
               className={styles.progressFill}
               animate={{ width: `${progressPct}%` }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
@@ -137,7 +154,7 @@ export default function Constitution() {
       <AnimatePresence mode="wait">
         {/* Step 0 */}
         {step === 0 && (
-          <motion.div key="s0"
+          <Motion.div key="s0"
             initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}>
             <div className={styles.stepSection}>§ 1 / 4 · Statement of Intent</div>
@@ -149,12 +166,12 @@ export default function Constitution() {
             <div className={styles.stepNav}>
               <Button onClick={() => setStep(1)} disabled={!form.nl.trim()}>Continue →</Button>
             </div>
-          </motion.div>
+          </Motion.div>
         )}
 
         {/* Step 1 */}
         {step === 1 && (
-          <motion.div key="s1"
+          <Motion.div key="s1"
             initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}>
             <div className={styles.stepSection}>§ 2 / 4 · Editorial Stance</div>
@@ -174,12 +191,12 @@ export default function Constitution() {
               <Button variant="secondary" onClick={() => setStep(0)}>← Back</Button>
               <Button onClick={() => setStep(2)}>Continue →</Button>
             </div>
-          </motion.div>
+          </Motion.div>
         )}
 
         {/* Step 2 */}
         {step === 2 && (
-          <motion.div key="s2"
+          <Motion.div key="s2"
             initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}>
             <div className={styles.stepSection}>§ 3 / 4 · Calibration</div>
@@ -205,12 +222,12 @@ export default function Constitution() {
               <Button variant="secondary" onClick={() => setStep(1)}>← Back</Button>
               <Button onClick={() => setStep(3)}>Continue →</Button>
             </div>
-          </motion.div>
+          </Motion.div>
         )}
 
         {/* Step 3 */}
         {step === 3 && (
-          <motion.div key="s3"
+          <Motion.div key="s3"
             initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}>
             <div className={styles.stepSection}>§ 4 / 4 · Topical Domains</div>
@@ -257,17 +274,17 @@ export default function Constitution() {
                 {loading ? '⟳ Generating…' : '⚡ Generate Constitution'}
               </Button>
             </div>
-          </motion.div>
+          </Motion.div>
         )}
 
         {/* Result */}
         {step === TOTAL_STEPS && pnc && (
-          <motion.div key="result"
+          <Motion.div key="result"
             initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}>
             <div className={styles.constitutionCard}>
               <div className={styles.constHead}>
-                <span className={styles.constTitle}>Constitution of {pnc.user_id}</span>
+                <span className={styles.constTitle}>Constitution of {constitutionOwnerName}</span>
                 <span className={styles.constDate}>{new Date().toISOString().split('T')[0]}</span>
               </div>
               <div className={styles.constGrid}>
@@ -314,18 +331,20 @@ export default function Constitution() {
                   </div>
                 </div>
               </div>
-              <motion.button
+              <Motion.button
                 className={`${styles.constSaveBtn} ${saved ? styles.saved : ''}`}
                 onClick={handleSave}
                 whileTap={{ scale: 0.98 }}
               >
-                {saved ? '✓ Saved to Server' : '↑ Save Constitution'}
-              </motion.button>
+                {saved
+                  ? (onboardingMode ? '✓ Setup Complete' : '✓ Saved to Server')
+                  : (onboardingMode ? 'Finish Setup' : '↑ Save Constitution')}
+              </Motion.button>
             </div>
             <div className={styles.stepNav} style={{ marginTop: 16 }}>
               <Button variant="secondary" onClick={() => setStep(0)}>↺ Rebuild</Button>
             </div>
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>

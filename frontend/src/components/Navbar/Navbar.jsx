@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
-import { USER_ID } from '../../api/client'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import styles from './Navbar.module.css'
 
 const TABS = [
@@ -11,7 +10,7 @@ const TABS = [
   { path: '/leaderboard',  label: 'The Arena' },
 ]
 
-export default function Navbar() {
+export default function Navbar({ currentUserId = 'anonymous', onLogout }) {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [now, setNow] = useState(new Date())
@@ -51,9 +50,12 @@ export default function Navbar() {
           GDELT · LIVE
           <span className={styles.liveDot} />
         </span>
-        <span className={styles.metaUser}>
-          READER: <span>{USER_ID}</span>
-        </span>
+        <div className={styles.metaRight}>
+          <span className={styles.metaUser}>
+            READER: <span>{currentUserId}</span>
+          </span>
+          <button type="button" className={styles.logoutBtn} onClick={onLogout}>SIGN OUT</button>
+        </div>
       </div>
 
       {/* Rule 3px */}
@@ -66,8 +68,7 @@ export default function Navbar() {
       >
         <motion.div
           className={styles.mastheadTitle}
-          style={{ scale: mastheadFontSize }}
-          style={{ transformOrigin: 'left center' }}
+          style={{ scale: mastheadFontSize, transformOrigin: 'left center' }}
           onClick={() => navigate('/')}
         >
           The EthosNews
