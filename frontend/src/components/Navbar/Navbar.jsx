@@ -4,13 +4,13 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 import styles from './Navbar.module.css'
 
 const TABS = [
-  { path: '/',             label: 'Intelligence Feed' },
+  { path: '/', label: 'Intelligence Feed' },
   { path: '/truth-engine', label: 'Truth Engine' },
   { path: '/constitution', label: 'Constitution' },
-  { path: '/leaderboard',  label: 'The Arena' },
+  { path: '/leaderboard', label: 'The Arena' },
 ]
 
-export default function Navbar({ currentUserId = 'anonymous', onLogout }) {
+export default function Navbar({ currentUserId = 'anonymous', currentUser, onLogout }) {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [now, setNow] = useState(new Date())
@@ -54,6 +54,11 @@ export default function Navbar({ currentUserId = 'anonymous', onLogout }) {
           <span className={styles.metaUser}>
             READER: <span>{currentUserId}</span>
           </span>
+          {currentUser?.streak_count > 0 && (
+            <span className={styles.streakBadge}>
+              🔥 {currentUser.streak_count} Day{currentUser.streak_count !== 1 ? 's' : ''}
+            </span>
+          )}
           <button type="button" className={styles.logoutBtn} onClick={onLogout}>SIGN OUT</button>
         </div>
       </div>

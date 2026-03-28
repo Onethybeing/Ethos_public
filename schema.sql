@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url      VARCHAR,
     onboarding_completed BOOLEAN    NOT NULL DEFAULT false,
     is_active       BOOLEAN         NOT NULL DEFAULT true,
+    last_login_at   TIMESTAMPTZ,
+    streak_count    INTEGER         NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ     DEFAULT now(),
     updated_at      TIMESTAMPTZ     DEFAULT now()
 );

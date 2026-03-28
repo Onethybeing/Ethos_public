@@ -1,6 +1,7 @@
 """Authentication API router with JWT signup/login for EthosNews."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -21,7 +22,26 @@ def _user_profile(user: User) -> UserProfileResponse:
         email=user.email,
         display_name=user.display_name,
         onboarding_completed=bool(user.onboarding_completed),
+        streak_count=getattr(user, "streak_count", 0),
     )
+
+
+async def _update_user_streak(user: User, session) -> None:
+    now = datetime.now(timezone.utc)
+    today = now.date()
+
+    last_date = user.last_login_at.date() if user.last_login_at else None
+    if last_date != today:
+        if not user.last_login_at:
+            user.streak_count = 1
+        elif last_date == today - timedelta(days=1):
+            user.streak_count += 1
+        else:
+            user.streak_count = 1
+            
+        user.last_login_at = now
+        session.add(user)
+        await session.commit()
 
 
 def _empty_constitution() -> dict:
@@ -74,6 +94,8 @@ async def signup(request: SignupRequest) -> AuthResponse:
             password_hash=hash_password(request.password),
             onboarding_completed=False,
             is_active=True,
+            last_login_at=datetime.now(timezone.utc),
+            streak_count=1,
         )
         session.add(user)
         session.add(
@@ -105,6 +127,10 @@ async def login(request: LoginRequest) -> AuthResponse:
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive.")
 
+    async with AsyncSessionLocal() as session:
+        user = await session.merge(user)
+        await _update_user_streak(user, session)
+
     token = create_access_token(user.id)
     return AuthResponse(access_token=token, user=_user_profile(user))
 
@@ -112,4 +138,14 @@ async def login(request: LoginRequest) -> AuthResponse:
 @router.get("/me", response_model=UserProfileResponse)
 async def get_me(current_user: User = Depends(get_current_user)) -> UserProfileResponse:
     """Return the current authenticated user's profile."""
+    # Check if we need to update streak
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    last_date = current_user.last_login_at.date() if current_user.last_login_at else None
+    if last_date != today:
+        async with AsyncSessionLocal() as session:
+            db_user = await session.merge(current_user)
+            await _update_user_streak(db_user, session)
+            return _user_profile(db_user)
+
     return _user_profile(current_user)
