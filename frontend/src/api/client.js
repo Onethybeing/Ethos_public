@@ -183,25 +183,3 @@ export async function getMe() {
   writeStoredJSON(AUTH_USER_KEY, data);
   return data;
 }
-
-export async function getOnboardingQuestions() {
-  const { data } = await client.get('/onboarding/questions');
-  return data;
-}
-
-export async function getOnboardingStatus() {
-  const { data } = await client.get('/onboarding/status');
-  return data;
-}
-
-export async function submitOnboarding(answers) {
-  const { data } = await client.post('/onboarding/submit', { answers });
-  const currentUser = getCurrentUser();
-  if (currentUser) {
-    writeStoredJSON(AUTH_USER_KEY, {
-      ...currentUser,
-      onboarding_completed: true,
-    });
-  }
-  return data;
-}

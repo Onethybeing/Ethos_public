@@ -47,15 +47,13 @@ ACCESS_TOKEN_EXP_MINUTES=1440
 
 ## Auth + Onboarding Flow
 
-The app now uses JWT auth and first-run onboarding.
+The app now uses JWT auth and Constitution-based first-time setup.
 
 1. `POST /auth/signup` or `POST /auth/login`
 2. Store `access_token` and send it as `Authorization: Bearer <token>`
-3. `GET /onboarding/status`
-4. If not completed:
-   - `GET /onboarding/questions`
-   - `POST /onboarding/submit` with all answers in one payload
-5. Once completed, user-specific routes are available:
+3. On first signup, user lands on the Constitution page in setup mode (optional skip)
+4. Saving or patching constitution marks onboarding completed
+5. User-specific routes are available:
    - `GET /personalized_feed/{user_id}`
    - `GET /pnc/{user_id}`
    - `POST /pnc/{user_id}`
@@ -66,12 +64,6 @@ The app now uses JWT auth and first-run onboarding.
 - `POST /auth/signup`
 - `POST /auth/login`
 - `GET /auth/me` (JWT required)
-
-### Onboarding endpoints
-
-- `GET /onboarding/questions`
-- `GET /onboarding/status` (JWT required)
-- `POST /onboarding/submit` (JWT required)
 
 ### Add a new Python dependency
 
