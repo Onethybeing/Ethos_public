@@ -79,6 +79,8 @@ async def fact_check_article(article_id: str):
         raise HTTPException(status_code=503, detail=_service_error_detail(exc)) from exc
 
     result_dict = fact_result.model_dump()
+    result_dict["slop_score"] = article.ai_slop_score
+    result_dict["slop_label"] = article.ai_slop_label
 
     try:
         await cache.set_cached_fact_check(article_id, result_dict)

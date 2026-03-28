@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # Comma-separated allowed CORS origins (e.g. "http://localhost:3000,https://app.ethosnews.com")
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
+    # ── Fact-checking ─────────────────────────────────────────────────────
+    tavily_api_key: str = ""
+    # Max LLM classify calls running concurrently (throttles Groq TPM usage)
+    fact_check_max_concurrent: int = 3
+
     # ── Ingestion tuning ───────────────────────────────────────────────────
     gdelt_poll_interval_secs: int = 60
     ingestion_workers: int = 3

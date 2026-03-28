@@ -27,7 +27,7 @@ export default function Leaderboard({ currentUserId = '' }) {
 
   useEffect(() => {
     getLeaderboard()
-      .then(data => setEntries(data || []))
+      .then(data => setEntries(data?.leaderboard ?? data ?? []))
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])

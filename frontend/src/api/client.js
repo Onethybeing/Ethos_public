@@ -71,14 +71,16 @@ function normalizeVerdict(classification = '') {
 
 function normalizeEvaluation(evaluation = {}) {
   const verdict = normalizeVerdict(evaluation.classification ?? evaluation.verdict);
+  const rawConf = evaluation.confidence;
   return {
     claim: evaluation.claim ?? '',
     verdict,
-    confidence: typeof evaluation.confidence === 'number'
-      ? evaluation.confidence
+    confidence: typeof rawConf === 'number' && rawConf >= 0 && rawConf <= 1
+      ? rawConf
       : (verdict === 'not-mentioned' ? 0.5 : 0.75),
     evidence: evaluation.evidence ?? evaluation.explanation ?? '',
     supporting_urls: Array.isArray(evaluation.supporting_urls) ? evaluation.supporting_urls : [],
+    source_types: Array.isArray(evaluation.source_types) ? evaluation.source_types : [],
   };
 }
 
@@ -88,8 +90,10 @@ function normalizeFactCheckResponse(payload = {}) {
     ? result.evaluations.map(normalizeEvaluation)
     : [];
   return {
-    ...result,
     evaluations,
+    unverifiable_ratio: typeof result.unverifiable_ratio === 'number' ? result.unverifiable_ratio : null,
+    slop_score: typeof result.slop_score === 'number' ? result.slop_score : null,
+    slop_label: result.slop_label ?? null,
   };
 }
 
@@ -125,6 +129,13 @@ export async function factCheckText(text) {
 
 export async function getClusters(id) {
   const { data } = await client.get(`/article/${id}/clusters`);
+  return data;
+}
+
+export async function getRephrase(id) {
+  const { data } = await client.get(`/article/${id}/rephrase`, {
+    timeout: 45000,
+  });
   return data;
 }
 

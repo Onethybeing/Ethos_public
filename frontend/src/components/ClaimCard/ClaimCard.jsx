@@ -9,9 +9,27 @@ const verdictBg = (verdict) => {
   return 'rgba(181,131,10,0.1)'
 }
 
+function SourceBadge({ type }) {
+  const isWeb = type === 'web'
+  return (
+    <span style={{
+      fontFamily: 'var(--f-mono)',
+      fontSize: 9,
+      letterSpacing: '0.08em',
+      padding: '1px 5px',
+      border: `1px solid ${isWeb ? '#2a4a8a' : '#6b3fa0'}`,
+      color: isWeb ? '#2a4a8a' : '#6b3fa0',
+      marginRight: 4,
+      flexShrink: 0,
+    }}>
+      {isWeb ? 'WEB' : 'FEED'}
+    </span>
+  )
+}
+
 export default function ClaimCard({ evaluation, index = 0 }) {
   const [open, setOpen] = useState(false)
-  const { claim, verdict, confidence, evidence } = evaluation
+  const { claim, verdict, confidence, evidence, supporting_urls = [], source_types = [] } = evaluation
   const normalizedVerdict = verdict === 'not-mentioned' ? 'unverified' : verdict
 
   const color = verdictColor(verdict)
@@ -84,6 +102,33 @@ export default function ClaimCard({ evaluation, index = 0 }) {
             <div className={styles.confLine}>
               Confidence: {Math.round(confidence * 100)}%
             </div>
+
+            {/* Source attribution */}
+            {supporting_urls.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {supporting_urls.map((url, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <SourceBadge type={source_types[i] || 'corpus'} />
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontFamily: 'var(--f-mono)',
+                        fontSize: 10,
+                        color: 'var(--ink-muted)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: 240,
+                      }}
+                    >
+                      {url}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

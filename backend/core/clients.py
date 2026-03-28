@@ -12,26 +12,36 @@ Usage:
 from __future__ import annotations
 
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
 _qdrant = None
 _encoder = None
 _nlp = None
+_cross_encoder = None
+
+# One lock per singleton — prevents simultaneous heavy loads from parallel threads
+_qdrant_lock = threading.Lock()
+_encoder_lock = threading.Lock()
+_nlp_lock = threading.Lock()
+_cross_encoder_lock = threading.Lock()
 
 
 def get_qdrant():
     """Return the singleton synchronous QdrantClient."""
     global _qdrant
     if _qdrant is None:
-        from qdrant_client import QdrantClient
-        from backend.config import get_settings
-        s = get_settings()
-        logger.info("Connecting to Qdrant at %s", s.qdrant_url)
-        _qdrant = QdrantClient(
-            url=s.qdrant_url,
-            api_key=s.qdrant_api_key or None,
-        )
+        with _qdrant_lock:
+            if _qdrant is None:
+                from qdrant_client import QdrantClient
+                from backend.config import get_settings
+                s = get_settings()
+                logger.info("Connecting to Qdrant at %s", s.qdrant_url)
+                _qdrant = QdrantClient(
+                    url=s.qdrant_url,
+                    api_key=s.qdrant_api_key or None,
+                )
     return _qdrant
 
 
@@ -39,25 +49,42 @@ def get_encoder():
     """Return the singleton SentenceTransformer (lazy-loaded on first call)."""
     global _encoder
     if _encoder is None:
-        from sentence_transformers import SentenceTransformer
-        logger.info("Loading SentenceTransformer (all-MiniLM-L6-v2)…")
-        _encoder = SentenceTransformer("all-MiniLM-L6-v2")
-        logger.info("SentenceTransformer ready.")
+        with _encoder_lock:
+            if _encoder is None:
+                from sentence_transformers import SentenceTransformer
+                logger.info("Loading SentenceTransformer (all-MiniLM-L6-v2)…")
+                _encoder = SentenceTransformer("all-MiniLM-L6-v2")
+                logger.info("SentenceTransformer ready.")
     return _encoder
+
+
+def get_cross_encoder():
+    """Return the singleton CrossEncoder for evidence reranking (lazy-loaded)."""
+    global _cross_encoder
+    if _cross_encoder is None:
+        with _cross_encoder_lock:
+            if _cross_encoder is None:
+                from sentence_transformers import CrossEncoder
+                logger.info("Loading CrossEncoder (ms-marco-MiniLM-L-6-v2)…")
+                _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+                logger.info("CrossEncoder ready.")
+    return _cross_encoder
 
 
 def get_nlp():
     """Return the singleton spaCy en_core_web_sm model (lazy-loaded on first call)."""
     global _nlp
     if _nlp is None:
-        import spacy
-        logger.info("Loading spaCy model (en_core_web_sm)…")
-        try:
-            _nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            logger.warning("en_core_web_sm not found — downloading now…")
-            from spacy.cli import download
-            download("en_core_web_sm")
-            _nlp = spacy.load("en_core_web_sm")
-        logger.info("spaCy model ready.")
+        with _nlp_lock:
+            if _nlp is None:
+                import spacy
+                logger.info("Loading spaCy model (en_core_web_sm)…")
+                try:
+                    _nlp = spacy.load("en_core_web_sm")
+                except OSError:
+                    logger.warning("en_core_web_sm not found — downloading now…")
+                    from spacy.cli import download
+                    download("en_core_web_sm")
+                    _nlp = spacy.load("en_core_web_sm")
+                logger.info("spaCy model ready.")
     return _nlp

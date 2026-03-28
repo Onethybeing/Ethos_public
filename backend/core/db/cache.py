@@ -78,3 +78,14 @@ async def get_cached_clusters(article_id: str) -> dict | None:
 
 async def set_cached_clusters(article_id: str, result: dict, ttl: int = 1800) -> None:
     await _get_client().setex(f"clusters:{article_id}", ttl, json.dumps(result))
+
+
+# ── Rephrase results ───────────────────────────────────────────────────────
+
+async def get_cached_rephrase(article_id: str) -> dict | None:
+    data = await _get_client().get(f"rephrase:{article_id}")
+    return json.loads(data) if data else None
+
+
+async def set_cached_rephrase(article_id: str, result: dict, ttl: int = 86400) -> None:
+    await _get_client().setex(f"rephrase:{article_id}", ttl, json.dumps(result))

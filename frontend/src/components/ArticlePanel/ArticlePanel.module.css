@@ -6,24 +6,22 @@
   backdrop-filter: blur(2px);
 }
 
+/* ── Full-screen overlay ── */
 .panel {
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(740px, 100vw);
+  inset: 0;
   background: var(--paper);
-  border-left: 1px solid var(--rule);
   overflow-y: auto;
   z-index: 201;
-  box-shadow: -8px 0 40px rgba(14,12,9,0.12);
+  display: flex;
+  flex-direction: column;
 }
 
 .panel::-webkit-scrollbar { width: 4px; }
 .panel::-webkit-scrollbar-track { background: var(--paper-dark); }
 .panel::-webkit-scrollbar-thumb { background: var(--rule); }
 
-/* ── Close ── */
+/* ── Sticky close bar ── */
 .closeRow {
   position: sticky;
   top: 0;
@@ -54,10 +52,37 @@
   color: var(--red);
 }
 
-/* ── Content ── */
-.content {
-  padding: 8px 36px 60px;
+/* ── Two-column reader layout ── */
+.readerLayout {
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 340px);
+  gap: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 32px;
+  flex: 1;
 }
+
+/* ── Reading column ── */
+.readingColumn {
+  max-width: 650px;
+  width: 100%;
+  padding: 24px 48px 80px 0;
+  border-right: 1px solid var(--rule);
+}
+
+/* ── Right rail ── */
+.rail {
+  padding: 24px 0 80px 36px;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.rail::-webkit-scrollbar { width: 3px; }
+.rail::-webkit-scrollbar-thumb { background: var(--rule); }
 
 /* ── Category rule ── */
 .catRule {
@@ -96,6 +121,34 @@
 }
 .sourceLink:hover { opacity: 0.7; text-decoration: none; }
 
+/* ── Body toggle bar ── */
+.toggleBar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border: 1px solid var(--rule);
+  width: fit-content;
+}
+
+.toggleBtn {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 18px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toggleBtn.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 /* ── Article body ── */
 .body {
   font-family: var(--f-body);
@@ -103,7 +156,6 @@
   line-height: 1.85;
   color: var(--ink-soft);
   margin-bottom: 32px;
-  max-width: 620px;
 }
 
 .body p { margin-bottom: 1em; }
@@ -118,6 +170,22 @@
   margin-right: 6px;
   margin-top: 5px;
   color: var(--ink);
+}
+
+/* ── Rephrased footer ── */
+.rephrasedFooter {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+  margin-top: 8px;
+  letter-spacing: 0.03em;
+  font-style: italic;
+}
+
+.rephrasedFooter a {
+  color: var(--steel);
 }
 
 /* ── Section divider ── */
@@ -151,7 +219,7 @@
   flex-shrink: 0;
 }
 
-/* Fact check loading */
+/* ── Fact check summary ── */
 .fcSummary {
   display: flex;
   gap: 8px;
@@ -169,4 +237,33 @@
   align-items: center;
   gap: 5px;
   letter-spacing: 0.04em;
+}
+
+/* ── Loading / error text ── */
+.loadingText {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ── Responsive: stack on narrow viewports ── */
+@media (max-width: 900px) {
+  .readerLayout {
+    grid-template-columns: 1fr;
+    padding: 0 20px;
+  }
+
+  .readingColumn {
+    border-right: none;
+    padding-right: 0;
+    max-width: 100%;
+  }
+
+  .rail {
+    padding-left: 0;
+    position: static;
+    max-height: none;
+    border-top: 3px solid var(--ink);
+  }
 }
