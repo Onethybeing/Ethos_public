@@ -1,12 +1,17 @@
+# Python
 .venv/
 __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.env
+
 # Environment variables
 .env
 backend/.env
-.github/copilot-instructions.md
+
+# Node
+node_modules/
+
+# Claude / Copilot
 .claude/settings.json
 .github/copilot-instructions.md

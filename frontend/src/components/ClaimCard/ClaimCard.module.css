@@ -1,0 +1,133 @@
+.card {
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--verdict-color, #7a6f63);
+  margin-bottom: 6px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.header:hover {
+  background: var(--paper-dark);
+}
+
+/* ── Verdict Badge ── */
+.verdictBadge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--verdict-bg, rgba(122,111,99,0.1));
+  color: var(--verdict-color, #7a6f63);
+  border: 1px solid var(--verdict-color, #7a6f63);
+}
+
+.verdictSquare {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* SVG checkmark */
+.checkIcon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.checkPath {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 30;
+}
+
+/* ── Claim text ── */
+.claimText {
+  font-family: var(--f-body);
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  flex: 1;
+}
+
+/* ── Right side: confidence + chevron ── */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.confTrack {
+  width: 40px;
+  height: 3px;
+  background: var(--rule-light);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.confFill {
+  height: 100%;
+  background: var(--verdict-color, #7a6f63);
+}
+
+.chevron {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--ink-dim);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.chevron.open {
+  transform: rotate(180deg);
+}
+
+/* ── Evidence ── */
+.evidence {
+  padding: 10px 14px 14px 14px;
+  background: var(--paper-dark);
+  border-top: 1px solid var(--rule-light);
+}
+
+.evidenceRule {
+  height: 1px;
+  background: var(--rule);
+  margin-bottom: 10px;
+}
+
+.evidenceText {
+  font-family: var(--f-mono);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--ink-muted);
+  line-height: 1.7;
+  margin-bottom: 6px;
+}
+
+.confLine {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 0.06em;
+}

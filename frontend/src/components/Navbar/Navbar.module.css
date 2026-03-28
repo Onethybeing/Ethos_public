@@ -1,0 +1,158 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* ── Row 1: Meta bar ── */
+.metaBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 32px;
+  border-bottom: 1px solid var(--rule-light);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  gap: 16px;
+}
+
+.metaDate {
+  letter-spacing: 0.04em;
+}
+
+.liveBadge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mint);
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.metaUser {
+  letter-spacing: 0.04em;
+}
+
+.metaUser span {
+  color: var(--red);
+  font-weight: 700;
+}
+
+/* ── Row 2: Masthead ── */
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 32px 10px;
+  overflow: hidden;
+}
+
+.mastheadTitle {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  line-height: 1;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.mastheadTitle:hover { opacity: 0.75; }
+
+.mastheadMeta {
+  text-align: right;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+}
+
+.mastheadTagline {
+  font-family: var(--f-body);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ink-muted);
+  text-align: center;
+  flex: 1;
+  padding: 0 24px;
+}
+
+/* ── Rule ── */
+.rule3 {
+  height: 3px;
+  background: var(--ink);
+  margin: 0;
+}
+
+.rule1 {
+  height: 1px;
+  background: var(--rule);
+  margin: 0;
+}
+
+/* ── Row 3: Nav tabs ── */
+.navTabs {
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 0;
+  position: relative;
+}
+
+.navTab {
+  font-family: var(--f-body);
+  font-style: italic;
+  font-size: 13px;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  position: relative;
+  transition: color 0.15s;
+  text-decoration: none;
+  display: block;
+  white-space: nowrap;
+}
+
+.navTab:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.navTab.active {
+  color: var(--red);
+}
+
+/* Animated underline indicator */
+.tabIndicator {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  background: var(--red);
+}
+
+/* Scroll shadow */
+.scrolled {
+  box-shadow: 0 4px 20px rgba(14,12,9,0.08);
+}

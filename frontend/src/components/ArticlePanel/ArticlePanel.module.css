@@ -1,0 +1,172 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 12, 9, 0.5);
+  z-index: 200;
+  backdrop-filter: blur(2px);
+}
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(740px, 100vw);
+  background: var(--paper);
+  border-left: 1px solid var(--rule);
+  overflow-y: auto;
+  z-index: 201;
+  box-shadow: -8px 0 40px rgba(14,12,9,0.12);
+}
+
+.panel::-webkit-scrollbar { width: 4px; }
+.panel::-webkit-scrollbar-track { background: var(--paper-dark); }
+.panel::-webkit-scrollbar-thumb { background: var(--rule); }
+
+/* ── Close ── */
+.closeRow {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px 0;
+  background: linear-gradient(to bottom, var(--paper) 60%, transparent);
+}
+
+.closeBtn {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--ink-muted);
+  background: none;
+  border: 1px solid var(--rule);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.08em;
+}
+
+.closeBtn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ── Content ── */
+.content {
+  padding: 8px 36px 60px;
+}
+
+/* ── Category rule ── */
+.catRule {
+  height: 6px;
+  margin-bottom: 20px;
+}
+
+/* ── Title ── */
+.title {
+  font-family: var(--f-display);
+  font-style: italic;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+/* ── Dateline ── */
+.dateline {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sourceLink {
+  color: var(--steel);
+  transition: opacity 0.15s;
+}
+.sourceLink:hover { opacity: 0.7; text-decoration: none; }
+
+/* ── Article body ── */
+.body {
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--ink-soft);
+  margin-bottom: 32px;
+  max-width: 620px;
+}
+
+.body p { margin-bottom: 1em; }
+
+/* Drop cap */
+.body p:first-child::first-letter {
+  font-family: var(--f-display);
+  font-size: 4em;
+  font-weight: 900;
+  float: left;
+  line-height: 0.78;
+  margin-right: 6px;
+  margin-top: 5px;
+  color: var(--ink);
+}
+
+/* ── Section divider ── */
+.sectionDiv {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 18px;
+}
+
+.sectionLine { flex: 1; height: 1px; background: var(--rule); }
+.sectionHeavy { height: 3px; background: var(--ink); flex: 1; }
+
+.sectionLabel {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sectionMark {
+  width: 7px;
+  height: 7px;
+  background: var(--red);
+  flex-shrink: 0;
+}
+
+/* Fact check loading */
+.fcSummary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.countBadge {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.04em;
+}
