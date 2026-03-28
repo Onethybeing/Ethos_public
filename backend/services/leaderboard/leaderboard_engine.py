@@ -30,7 +30,7 @@ from sqlalchemy import text
 
 from backend.core.clients import get_encoder, get_qdrant
 from backend.core.db import cache as _cache
-from backend.core.db.postgres import AsyncSessionLocal, EngagementEvent
+from backend.core.db.postgres import AsyncSessionLocal, EngagementEvent, User
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -197,13 +197,34 @@ async def record_engagement(
 
 async def get_top_users(limit: int = 50) -> list[dict]:
     """
-    Fetch the top N users from the Redis leaderboard sorted set.
+    Fetch the top N users from the Redis leaderboard sorted set,
+    enriched with display_name and avatar_url from the users table.
 
-    Returns list of {rank, user_id, score} dicts.
+    Returns list of {rank, user_id, username, display_name, avatar_url, score}.
     """
     redis = _cache._get_client()
     entries = await redis.zrevrange(_LEADERBOARD_KEY, 0, limit - 1, withscores=True)
+    if not entries:
+        return []
+
+    user_ids = [uid for uid, _ in entries]
+
+    # Batch-fetch user profiles
+    async with AsyncSessionLocal() as session:
+        from sqlalchemy import select
+        result = await session.execute(
+            select(User).where(User.id.in_(user_ids))
+        )
+        users = {u.id: u for u in result.scalars()}
+
     return [
-        {"rank": i + 1, "user_id": user_id, "score": round(score, 3)}
+        {
+            "rank": i + 1,
+            "user_id": user_id,
+            "username": users[user_id].username if user_id in users else user_id,
+            "display_name": users[user_id].display_name if user_id in users else None,
+            "avatar_url": users[user_id].avatar_url if user_id in users else None,
+            "score": round(score, 3),
+        }
         for i, (user_id, score) in enumerate(entries)
     ]

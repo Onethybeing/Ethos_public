@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Float, String, Text, DateTime
+from sqlalchemy import Boolean, Column, Float, String, Text, DateTime, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -19,6 +19,23 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 Base = declarative_base()
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, index=True)  # auth provider ID (Clerk/Supabase/etc.)
+    username = Column(String, unique=True, nullable=False, index=True)
+    display_name = Column(String, nullable=True)
+    email = Column(String, unique=True, nullable=True, index=True)
+    avatar_url = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class Article(Base):
     __tablename__ = "articles"
 
@@ -30,7 +47,6 @@ class Article(Base):
     image_url = Column(String, nullable=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
     category = Column(String, nullable=True)
-    # AI slop detection results (populated by ingestion pipeline)
     ai_slop_score = Column(Float, nullable=True)
     ai_slop_label = Column(String, nullable=True)
 
@@ -38,7 +54,7 @@ class Article(Base):
 class UserConstitution(Base):
     __tablename__ = "user_constitutions"
 
-    user_id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, primary_key=True, index=True)  # FK → users.id
     constitution = Column(JSONB, nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -51,7 +67,7 @@ class EngagementEvent(Base):
     __tablename__ = "engagement_events"
 
     id = Column(String, primary_key=True, index=True)  # UUID
-    user_id = Column(String, index=True, nullable=False)
+    user_id = Column(String, index=True, nullable=False)  # FK → users.id
     article_id = Column(String, index=True, nullable=False)
     pnc_alignment = Column(Float, nullable=False, default=0.0)
     diversity_score = Column(Float, nullable=False, default=0.0)
@@ -63,10 +79,55 @@ class EngagementEvent(Base):
     )
 
 
+# One-time migrations: (name, sql) — only run once, tracked in _migrations table
+_MIGRATIONS: list[tuple[str, str]] = [
+    ("001_add_slop_columns", (
+        "ALTER TABLE articles "
+        "ADD COLUMN IF NOT EXISTS ai_slop_score FLOAT, "
+        "ADD COLUMN IF NOT EXISTS ai_slop_label VARCHAR"
+    )),
+    ("002_fix_timestamptz", (
+        "ALTER TABLE articles "
+        "ALTER COLUMN published_at TYPE TIMESTAMPTZ "
+        "USING published_at AT TIME ZONE 'UTC';"
+        "ALTER TABLE user_constitutions "
+        "ALTER COLUMN updated_at TYPE TIMESTAMPTZ "
+        "USING updated_at AT TIME ZONE 'UTC'"
+    )),
+    ("003_constitution_not_null", (
+        "UPDATE user_constitutions SET constitution = '{}' WHERE constitution IS NULL;"
+        "ALTER TABLE user_constitutions ALTER COLUMN constitution SET NOT NULL"
+    )),
+]
+
+
 async def init_db() -> None:
-    """Create all tables if they don't exist yet."""
+    """Create all tables, then run any pending one-time migrations."""
     async with engine.begin() as conn:
+        # Always safe — no-op if tables already exist
         await conn.run_sync(Base.metadata.create_all)
+
+        # Migration tracking table
+        await conn.execute(text(
+            "CREATE TABLE IF NOT EXISTS _migrations ("
+            "  name VARCHAR PRIMARY KEY, "
+            "  applied_at TIMESTAMPTZ DEFAULT now()"
+            ")"
+        ))
+
+        result = await conn.execute(text("SELECT name FROM _migrations"))
+        applied = {row[0] for row in result}
+
+        for name, sql in _MIGRATIONS:
+            if name in applied:
+                continue
+            for statement in sql.split(";"):
+                stmt = statement.strip()
+                if stmt:
+                    await conn.execute(text(stmt))
+            await conn.execute(text("INSERT INTO _migrations (name) VALUES (:n)"), {"n": name})
+            logger.info("Applied migration: %s", name)
+
     logger.info("Database tables initialized.")
 
 
@@ -104,7 +165,6 @@ async def save_article(article_data: dict) -> bool:
             await session.commit()
             return True
         except IntegrityError:
-            # Duplicate URL — expected during continuous ingestion
             await session.rollback()
             return False
         except Exception:
