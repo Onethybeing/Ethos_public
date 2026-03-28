@@ -77,12 +77,12 @@ async def get_narrative_clusters(article_id: str) -> ClusterResult:
     topic_query = target.payload.get("title", "")
 
     # ── 2. Retrieve similar articles ──────────────────────────────────────────
-    hits = qdrant.search(
+    hits = qdrant.query_points(
         collection_name=settings.qdrant_collection,
-        query_vector=target_vector.tolist(),
+        query=target_vector.tolist(),
         limit=50,
         with_vectors=True,
-    )
+    ).points
 
     if len(hits) < 3:
         return ClusterResult(

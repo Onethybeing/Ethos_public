@@ -99,11 +99,11 @@ class FactChecker:
     def retrieve_evidence(self, claim: str, limit: int = 4) -> list[dict]:
         """Step 2: Semantic search in Qdrant for articles relevant to the claim."""
         query_vector = get_encoder().encode(claim).tolist()
-        hits = get_qdrant().search(
+        hits = get_qdrant().query_points(
             collection_name=self._collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=limit,
-        )
+        ).points
         return [
             {
                 "source_url": hit.payload.get("source", ""),

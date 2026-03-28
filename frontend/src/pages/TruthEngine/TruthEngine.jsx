@@ -28,9 +28,13 @@ export default function TruthEngine() {
     if (!text.trim()) return
     setState('loading')
     setResults(null)
-    const data = await factCheckText(text)
-    setResults(data)
-    setState('done')
+    try {
+      const data = await factCheckText(text)
+      setResults(data)
+      setState('done')
+    } catch {
+      setState('error')
+    }
   }
 
   const counts = results ? {
@@ -97,6 +101,11 @@ export default function TruthEngine() {
       </Button>
 
       {state === 'loading' && <TerminalStream lines={STREAM_LINES} />}
+      {state === 'error' && (
+        <p style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: '#c8281e', marginTop: 16 }}>
+          ■ Verification failed — backend unavailable.
+        </p>
+      )}
 
       {/* Results */}
       {state === 'done' && results && (

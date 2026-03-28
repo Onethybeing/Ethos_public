@@ -37,10 +37,10 @@ export default function ArticlePanel({ article, onClose }) {
   // Fetch full article content if not already present
   useEffect(() => {
     if (article.content) return
-    getArticle(article.id).then(full => {
-      setContent(full?.content || '')
-      setContentLoading(false)
-    })
+    getArticle(article.id)
+      .then(full => setContent(full?.content || ''))
+      .catch(() => setContent(''))
+      .finally(() => setContentLoading(false))
   }, [article.id])
 
   // Keyboard close + read-time tracking
@@ -56,16 +56,24 @@ export default function ArticlePanel({ article, onClose }) {
 
   async function runFactCheck() {
     setFcState('loading')
-    const data = await factCheckArticle(article.id)
-    setFcData(data)
-    setFcState('done')
+    try {
+      const data = await factCheckArticle(article.id)
+      setFcData(data)
+      setFcState('done')
+    } catch {
+      setFcState('error')
+    }
   }
 
   async function loadClusters() {
     setClState('loading')
-    const data = await getClusters(article.id)
-    setClData(data)
-    setClState('done')
+    try {
+      const data = await getClusters(article.id)
+      setClData(data)
+      setClState('done')
+    } catch {
+      setClState('error')
+    }
   }
 
   const color = catColor(article.category)
@@ -155,6 +163,7 @@ export default function ArticlePanel({ article, onClose }) {
               <Button onClick={runFactCheck}>⚡ Run Fact Check</Button>
             )}
             {fcState === 'loading' && <TerminalStream lines={STREAM_LINES} />}
+            {fcState === 'error' && <p className={styles.loadingText}>Fact check unavailable — backend error.</p>}
             {fcState === 'done' && fcData && (
               <>
                 <div className={styles.fcSummary}>
@@ -190,6 +199,7 @@ export default function ArticlePanel({ article, onClose }) {
               </Button>
             )}
             {clState === 'loading' && <TerminalStream lines={CLUSTER_LINES} />}
+            {clState === 'error' && <p className={styles.loadingText}>Cluster analysis unavailable — backend error.</p>}
             {clState === 'done' && <ClusterViz data={clData} />}
 
             <div style={{ height: 40 }} />

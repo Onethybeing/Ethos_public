@@ -103,11 +103,11 @@ async def get_personalized_feed(user_id: str):
         if priority_domains and encoder and qdrant:
             try:
                 query_vector = encoder.encode(" ".join(priority_domains)).tolist()
-                raw_hits = qdrant.search(
+                raw_hits = qdrant.query_points(
                     collection_name=settings.qdrant_collection,
-                    query_vector=query_vector,
+                    query=query_vector,
                     limit=200,
-                )
+                ).points
 
                 now = datetime.datetime.now(datetime.timezone.utc)
                 scored: list[tuple[float, str]] = []
@@ -130,7 +130,7 @@ async def get_personalized_feed(user_id: str):
                     )
                     id_map = {a.id: a for a in result.scalars().all()}
                     sorted_articles = [id_map[did] for did in matched_ids if did in id_map]
-                    feed_data = [_serialize_article(a, include_slop=True) for a in sorted_articles]
+                    feed_data = [_serialize_article(a) for a in sorted_articles]
 
             except Exception as e:
                 logger.warning("Qdrant personalized feed failed for %s: %s", user_id, e)
@@ -144,7 +144,7 @@ async def get_personalized_feed(user_id: str):
                 query = query.where(~Article.category.ilike(f"%{ex}%"))
             query = query.order_by(desc(Article.published_at)).limit(30)
             result = await session.execute(query)
-            feed_data = [_serialize_article(a, include_slop=True) for a in result.scalars().all()]
+            feed_data = [_serialize_article(a) for a in result.scalars().all()]
 
     if feed_data:
         await cache.set_cached_user_feed(user_id, feed_data)
@@ -155,7 +155,7 @@ async def get_personalized_feed(user_id: str):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _serialize_article(article: Article, include_content: bool = False, include_slop: bool = False) -> dict:
+def _serialize_article(article: Article, include_content: bool = False) -> dict:
     data = {
         "id": article.id,
         "title": article.title,
@@ -164,12 +164,11 @@ def _serialize_article(article: Article, include_content: bool = False, include_
         "image_url": article.image_url,
         "published_at": article.published_at.isoformat() if article.published_at else None,
         "category": article.category,
+        "ai_slop_score": article.ai_slop_score,
+        "ai_slop_label": article.ai_slop_label,
     }
     if include_content:
         data["content"] = article.content
-    if include_slop:
-        data["ai_slop_score"] = article.ai_slop_score
-        data["ai_slop_label"] = article.ai_slop_label
     return data
 
 

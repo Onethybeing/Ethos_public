@@ -23,12 +23,13 @@ function RankSymbol({ rank }) {
 export default function Leaderboard() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState(false)
 
   useEffect(() => {
-    getLeaderboard().then(data => {
-      setEntries(data || [])
-      setLoading(false)
-    })
+    getLeaderboard()
+      .then(data => setEntries(data || []))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
   }, [])
 
   const me = entries.find(e => e.user_id === USER_ID)
@@ -90,6 +91,8 @@ export default function Leaderboard() {
 
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
+          : error
+          ? <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: '#c8281e', padding: '24px 0' }}>■ Leaderboard unavailable — backend offline.</div>
           : entries.map((entry, i) => {
               const isMe = entry.user_id === USER_ID
               const pct = (entry.score / topScore) * 100

@@ -57,28 +57,39 @@ export default function Constitution() {
   const [eTag, setETag] = useState('')
 
   useEffect(() => {
-    getPNC().then(d => { if (d) setPnc(d) })
+    getPNC()
+      .then(d => { if (d) setPnc(d) })
+      .catch(() => {})
   }, [])
 
   async function generate() {
     setLoading(true)
-    const d = await generatePNC(form.nl)
-    setPnc(d || {
-      user_id: USER_ID,
-      epistemic_framework:    { primary_mode: form.mode, verification_threshold: form.vThresh },
-      narrative_preferences:  { diversity_weight: form.divWeight, bias_tolerance: form.biasT },
-      topical_constraints:    { priority_domains: [...form.priorities], excluded_topics: [...form.excluded] },
-      complexity_preference:  { readability_depth: form.depth, data_density: form.density },
-    })
-    setLoading(false)
-    setStep(TOTAL_STEPS)
+    try {
+      const d = await generatePNC(form.nl)
+      setPnc(d)
+    } catch {
+      setPnc({
+        user_id: USER_ID,
+        epistemic_framework:    { primary_mode: form.mode, verification_threshold: form.vThresh },
+        narrative_preferences:  { diversity_weight: form.divWeight, bias_tolerance: form.biasT },
+        topical_constraints:    { priority_domains: [...form.priorities], excluded_topics: [...form.excluded] },
+        complexity_preference:  { readability_depth: form.depth, data_density: form.density },
+      })
+    } finally {
+      setLoading(false)
+      setStep(TOTAL_STEPS)
+    }
   }
 
   async function handleSave() {
     if (!pnc) return
-    await savePNC(pnc)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2200)
+    try {
+      await savePNC(pnc)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2200)
+    } catch {
+      alert('Failed to save — backend unavailable.')
+    }
   }
 
   function addTag(type) {
