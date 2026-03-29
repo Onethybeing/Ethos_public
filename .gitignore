@@ -1,17 +1,32 @@
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 .venv/
 __pycache__/
+*.py[cod]
+*.pyo
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 
-# Environment variables
+# ── Environment variables ─────────────────────────────────────────────────────
 .env
+.env.local
 backend/.env
+backend/.env.local
 
-# Node
+# ── Generated / artifacts ─────────────────────────────────────────────────────
+schema.sql
+*.tex
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
 node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
 
-# Claude / Copilot
+# ── Claude / Copilot ──────────────────────────────────────────────────────────
 .claude/settings.json
 .github/copilot-instructions.md
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

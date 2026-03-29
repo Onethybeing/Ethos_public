@@ -255,13 +255,16 @@ async def fetch_gdelt_source(queue: asyncio.Queue, settings) -> None:
                 for _, row in mentions_df.iterrows():
                     raw = _lower_key_dict(row.to_dict())
 
-                    url = _safe_str(raw.get("sourceurl"))
-                    if not url or url in seen_urls:
+                    url = _safe_str(raw.get("mentionidentifier"))
+                    if not url or not url.startswith("http") or url in seen_urls:
                         continue
 
                     seen_urls.add(url)
                     global_event_id = _event_id(raw.get("globaleventid"))
                     enrichment = events_lookup.get(global_event_id or "", {})
+
+                    # Use MentionDocTone directly — no join needed for tone
+                    avg_tone = _to_float(raw.get("mentiondoctone")) or enrichment.get("avg_tone")
 
                     timestamp_raw = (
                         raw.get("mentiontimedate")
@@ -276,7 +279,7 @@ async def fetch_gdelt_source(queue: asyncio.Queue, settings) -> None:
                                 _safe_str(raw.get("mentionsourcename")),
                                 url,
                             ),
-                            "avg_tone": enrichment.get("avg_tone"),
+                            "avg_tone": avg_tone,
                             "num_mentions": enrichment.get("num_mentions"),
                             "event_code": enrichment.get("event_code"),
                             "country_code": enrichment.get("country_code"),
@@ -297,7 +300,7 @@ async def fetch_gdelt_source(queue: asyncio.Queue, settings) -> None:
         await asyncio.sleep(settings.gdelt_poll_interval_secs)
 
 
-async def stream_processor(queue: asyncio.Queue, settings) -> None:
+async def stream_processor(queue: asyncio.Queue, settings, limit: int | None = None) -> None:
     """
     Consumer: scrapes, embeds, detects slop, and persists each article.
     Multiple workers run concurrently to hide I/O latency.
@@ -308,6 +311,7 @@ async def stream_processor(queue: asyncio.Queue, settings) -> None:
     slop_l2 = SlopDetectorL2(get_llm())
     qdrant = get_qdrant()
     char_limit = settings.spacy_char_limit
+    inserted_count = 0
 
     async with httpx.AsyncClient(
         timeout=settings.scrape_timeout_secs,
@@ -316,6 +320,9 @@ async def stream_processor(queue: asyncio.Queue, settings) -> None:
     ) as http:
 
         while True:
+            if limit is not None and inserted_count >= limit:
+                logger.info("Reached insert limit (%d). Worker stopping.", limit)
+                return
             item = await queue.get()
             url = str(item.get("url", "")).strip()
 
@@ -417,9 +424,12 @@ async def stream_processor(queue: asyncio.Queue, settings) -> None:
                 })
 
                 if inserted:
+                    inserted_count += 1
                     slop_score_str = f"{slop_score:.2f}" if isinstance(slop_score, (int, float)) else "n/a"
                     logger.info(
-                        "Ingested [%s] %s… (slop=%s)",
+                        "Ingested [%d%s] [%s] %s… (slop=%s)",
+                        inserted_count,
+                        f"/{limit}" if limit else "",
                         slop_label, url[:60], slop_score_str,
                     )
 
@@ -433,13 +443,15 @@ async def stream_processor(queue: asyncio.Queue, settings) -> None:
                 queue.task_done()
 
 
-async def main() -> None:
+async def main(limit: int | None = None) -> None:
     from backend.core.logging_config import setup_logging
     settings = get_settings()
     setup_logging(settings.log_level)
 
     logger.info("=" * 50)
     logger.info("  EthosNews Continuous Ingestion Pipeline")
+    if limit:
+        logger.info("  Insert limit: %d articles", limit)
     logger.info("=" * 50)
 
     await init_db()
@@ -448,7 +460,7 @@ async def main() -> None:
     queue: asyncio.Queue = asyncio.Queue(maxsize=500)
 
     workers = [
-        stream_processor(queue, settings)
+        stream_processor(queue, settings, limit=limit)
         for _ in range(settings.ingestion_workers)
     ]
 
@@ -459,9 +471,14 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="EthosNews ingestion pipeline")
+    parser.add_argument("--limit", type=int, default=None, help="Stop after N successful inserts")
+    args = parser.parse_args()
+
     if os.name == "nt":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
-        asyncio.run(main())
+        asyncio.run(main(limit=args.limit))
     except KeyboardInterrupt:
         print("\nShutdown signal received. Stopping pipeline.")
