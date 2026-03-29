@@ -87,6 +87,43 @@ class EngagementEvent(Base):
     )
 
 
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False)
+    article_id = Column(String, index=True, nullable=False)
+    parent_id = Column(String, index=True, nullable=True)  # For threaded replies
+    content = Column(Text, nullable=False)
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class ArticleVote(Base):
+    __tablename__ = "article_votes"
+
+    user_id = Column(String, primary_key=True, index=True)
+    article_id = Column(String, primary_key=True, index=True)
+    vote = Column(Integer, nullable=False)  # 1 (up) or -1 (down)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 # One-time migrations: (name, sql) — only run once, tracked in _migrations table
 _MIGRATIONS: list[tuple[str, str]] = [
     ("001_add_slop_columns", (
@@ -153,6 +190,29 @@ _MIGRATIONS: list[tuple[str, str]] = [
         "ADD COLUMN IF NOT EXISTS avg_tone FLOAT, "
         "ADD COLUMN IF NOT EXISTS num_mentions INTEGER, "
         "ADD COLUMN IF NOT EXISTS country_code VARCHAR"
+    )),
+    ("009_add_engagement_tables", (
+        "CREATE TABLE IF NOT EXISTS comments ("
+        "  id VARCHAR PRIMARY KEY, "
+        "  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE, "
+        "  article_id VARCHAR NOT NULL REFERENCES articles(id) ON DELETE CASCADE, "
+        "  parent_id VARCHAR REFERENCES comments(id) ON DELETE SET NULL, "
+        "  content TEXT NOT NULL, "
+        "  is_deleted BOOLEAN NOT NULL DEFAULT false, "
+        "  created_at TIMESTAMPTZ DEFAULT now(), "
+        "  updated_at TIMESTAMPTZ DEFAULT now()"
+        ");"
+        "CREATE INDEX IF NOT EXISTS ix_comments_user_id ON comments (user_id);"
+        "CREATE INDEX IF NOT EXISTS ix_comments_article_id ON comments (article_id);"
+        "CREATE INDEX IF NOT EXISTS ix_comments_parent_id ON comments (parent_id);"
+        "CREATE TABLE IF NOT EXISTS article_votes ("
+        "  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE, "
+        "  article_id VARCHAR NOT NULL REFERENCES articles(id) ON DELETE CASCADE, "
+        "  vote INTEGER NOT NULL, "
+        "  created_at TIMESTAMPTZ DEFAULT now(), "
+        "  updated_at TIMESTAMPTZ DEFAULT now(), "
+        "  PRIMARY KEY (user_id, article_id)"
+        ");"
     )),
 ]
 

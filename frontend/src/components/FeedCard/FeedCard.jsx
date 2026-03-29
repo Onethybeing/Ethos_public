@@ -52,6 +52,14 @@ export default function FeedCard({ article, index = 0, featured = false, onClick
       {/* Excerpt */}
       <p className={styles.excerpt}>{article.content}</p>
 
+      {/* Trending Indicator (optional/dynamic) */}
+      {(article.upvotes > 0 || article.downvotes > 0) && (
+        <div className={styles.voteSummary}>
+          <span className={styles.upCount}>▲ {article.upvotes}</span>
+          <span className={styles.downCount}>▼ {article.downvotes}</span>
+        </div>
+      )}
+
       {/* Footer */}
       <div className={styles.footer}>
         <div className={styles.integritySeal}>

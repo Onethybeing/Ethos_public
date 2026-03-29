@@ -13,16 +13,17 @@ export default function Feed() {
   const [loading, setLoading] = useState(true)
   const [personalized, setPersonalized] = useState(false)
   const [filter, setFilter] = useState('All')
+  const [trending, setTrending] = useState(false)
   const [selected, setSelected] = useState(null)
 
   useEffect(() => {
     setLoading(true)
-    const fetchPromise = personalized ? getPersonalizedFeed() : getFeed(filter)
+    const fetchPromise = personalized ? getPersonalizedFeed() : getFeed(filter, trending)
     fetchPromise
       .then(data => setArticles(data || []))
       .catch(() => setArticles([]))
       .finally(() => setLoading(false))
-  }, [personalized, filter])
+  }, [personalized, filter, trending])
 
   const filtered = personalized
     ? (filter === 'All' ? articles : articles.filter(a => a.category === filter))
@@ -54,11 +55,20 @@ export default function Feed() {
           </button>
         ))}
 
-        <div className={styles.toggleWrap} onClick={() => setPersonalized(p => !p)}>
-          <div className={`${styles.toggle} ${personalized ? styles.on : ''}`}>
-            <div className={styles.toggleThumb} />
+        <div className={styles.toggleGroup}>
+          <div className={styles.toggleWrap} onClick={() => setTrending(t => !t)}>
+            <div className={`${styles.toggle} ${trending ? styles.on : ''}`}>
+              <div className={styles.toggleThumb} />
+            </div>
+            Trending
           </div>
-          Personalised
+
+          <div className={styles.toggleWrap} onClick={() => setPersonalized(p => !p)}>
+            <div className={`${styles.toggle} ${personalized ? styles.on : ''}`}>
+              <div className={styles.toggleThumb} />
+            </div>
+            Personalised
+          </div>
         </div>
       </div>
 

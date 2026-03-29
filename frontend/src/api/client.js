@@ -97,15 +97,13 @@ function normalizeFactCheckResponse(payload = {}) {
   };
 }
 
-export async function getFeed(category = 'All') {
+export async function getFeed(category = 'All', trending = false) {
   const params = new URLSearchParams();
-  if (category !== 'All') {
-    params.set('category', category);
-  }
-  params.set('limit', '50');
+  if (category !== 'All') params.append('category', category);
+  params.append('trending', String(trending));
+  params.append('limit', '50');
 
-  const query = params.toString();
-  const { data } = await client.get(`/feed${query ? `?${query}` : ''}`);
+  const { data } = await client.get(`/feed?${params.toString()}`);
   return data.data ?? data;
 }
 
@@ -171,6 +169,29 @@ export async function savePNC(pncData, userId = getCurrentUserId()) {
 
 export async function getLeaderboard(limit = 10) {
   const { data } = await client.get(`/leaderboard/top?limit=${limit}`);
+  return data;
+}
+
+export async function getEngagementStatus(articleId) {
+  const { data } = await client.get(`/articles/${articleId}/engagement`);
+  return data;
+}
+
+export async function voteArticle(articleId, vote) {
+  const { data } = await client.post(`/articles/${articleId}/vote`, { vote });
+  return data;
+}
+
+export async function getComments(articleId) {
+  const { data } = await client.get(`/articles/${articleId}/comments`);
+  return data;
+}
+
+export async function postComment(articleId, content, parentId = null) {
+  const { data } = await client.post(`/articles/${articleId}/comments`, {
+    content,
+    parent_id: parentId,
+  });
   return data;
 }
 

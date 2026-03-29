@@ -6,8 +6,10 @@ import ClaimCard from '../ClaimCard/ClaimCard'
 import ClusterViz from '../ClusterViz/ClusterViz'
 import TerminalStream from '../ui/TerminalStream'
 import Button from '../ui/Button'
-import { factCheckArticle, getClusters, recordEvent, getArticle, getRephrase } from '../../api/client'
+import { factCheckArticle, getClusters, recordEvent, getArticle, getRephrase, getEngagementStatus } from '../../api/client'
 import { catColor, formatDate } from '../../utils/helpers'
+import EngagementBar from './EngagementBar'
+import CommentSection from './CommentSection'
 import styles from './ArticlePanel.module.css'
 
 const STREAM_LINES = [
@@ -33,15 +35,16 @@ const REPHRASE_LINES = [
 ]
 
 export default function ArticlePanel({ article, onClose }) {
-  const [fcState,       setFcState]       = useState('idle')  // idle | loading | slow | done | error
-  const [fcData,        setFcData]        = useState(null)
-  const [clState,       setClState]       = useState('idle')
-  const [clData,        setClData]        = useState(null)
-  const [rpState,       setRpState]       = useState('idle')
-  const [rpData,        setRpData]        = useState(null)
+  const [fcState, setFcState] = useState('idle')  // idle | loading | slow | done | error
+  const [fcData, setFcData] = useState(null)
+  const [clState, setClState] = useState('idle')
+  const [clData, setClData] = useState(null)
+  const [rpState, setRpState] = useState('idle')
+  const [rpData, setRpData] = useState(null)
   const [showRephrased, setShowRephrased] = useState(false)
-  const [content,       setContent]       = useState(article.content || null)
+  const [content, setContent] = useState(article.content || null)
   const [contentLoading, setContentLoading] = useState(!article.content)
+  const [hasRead, setHasRead] = useState(true)
   const openTime = useRef(Date.now())
   const fcSlowTimer = useRef(null)
 
@@ -56,12 +59,16 @@ export default function ArticlePanel({ article, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
+
+    // Initial check for read status (we can still track it for analytics)
+    getEngagementStatus(article.id).then(status => setHasRead(status.has_read || true))
+
     return () => {
       document.removeEventListener('keydown', onKey)
       const secs = Math.floor((Date.now() - openTime.current) / 1000)
       if (secs >= 5) recordEvent(article.id, secs)
     }
-  }, [])
+  }, [article.id])
 
   async function runFactCheck() {
     setFcState('loading')
@@ -102,9 +109,9 @@ export default function ArticlePanel({ article, onClose }) {
 
   const color = catColor(article.category)
   const verdictCounts = fcData ? {
-    supported:    fcData.evaluations.filter(e => e.verdict === 'supported').length,
+    supported: fcData.evaluations.filter(e => e.verdict === 'supported').length,
     contradicted: fcData.evaluations.filter(e => e.verdict === 'contradicted').length,
-    unverified:   fcData.evaluations.filter(e => ['unverified', 'not-mentioned'].includes(e.verdict)).length,
+    unverified: fcData.evaluations.filter(e => ['unverified', 'not-mentioned'].includes(e.verdict)).length,
   } : null
 
   return (
@@ -178,6 +185,7 @@ export default function ArticlePanel({ article, onClose }) {
                   </button>
                 </div>
               )}
+              <EngagementBar articleId={article.id} hasRead={hasRead} />
 
               {/* Article body */}
               <div className={styles.body}>
@@ -200,6 +208,9 @@ export default function ArticlePanel({ article, onClose }) {
                   </a>
                 </div>
               )}
+
+              {/* Discussion Section */}
+              <CommentSection articleId={article.id} hasRead={hasRead} />
             </div>
 
             {/* ── Right: analysis rail ── */}
@@ -344,6 +355,6 @@ export default function ArticlePanel({ article, onClose }) {
           </div>
         </motion.div>
       </>
-    </AnimatePresence>
+    </AnimatePresence >
   )
 }

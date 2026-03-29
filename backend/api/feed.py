@@ -13,12 +13,12 @@ import logging
 import math
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import desc, or_, select
+from sqlalchemy import desc, or_, select, func, case
 
 from backend.core.clients import get_encoder, get_qdrant
 from backend.core.auth import get_current_user
 from backend.core.db import cache
-from backend.core.db.postgres import Article, AsyncSessionLocal, User, UserConstitution
+from backend.core.db.postgres import Article, AsyncSessionLocal, User, UserConstitution, ArticleVote
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -26,12 +26,43 @@ router = APIRouter(tags=["Feed"])
 
 
 @router.get("/feed")
-async def get_feed(category: str | None = None, limit: int | None = None):
+async def get_feed(category: str | None = None, limit: int | None = None, trending: bool = False):
     """
     Latest articles. If a category is provided, runs a semantic search via Qdrant to return category matches.
     """
     settings = get_settings()
     feed_limit = limit if isinstance(limit, int) and limit > 0 else settings.feed_article_limit
+
+    if trending:
+        # Trending: Join with votes and order by upvotes DESC, downvotes ASC
+        async with AsyncSessionLocal() as session:
+            # We use sum(case...) to count up/down votes for each article
+            up_count = func.sum(case((ArticleVote.vote == 1, 1), else_=0)).label("upvotes")
+            down_count = func.sum(case((ArticleVote.vote == -1, 1), else_=0)).label("downvotes")
+            
+            stmt = (
+                select(Article, up_count, down_count)
+                .outerjoin(ArticleVote, Article.id == ArticleVote.article_id)
+                .group_by(Article.id)
+            )
+            
+            if category and category != "All":
+                stmt = stmt.where(Article.category == category)
+            
+            # Sort by upvotes DESC, then by downvotes ASC (less downvotes is better for ties)
+            stmt = stmt.order_by(desc("upvotes"), "downvotes", desc(Article.published_at)).limit(feed_limit)
+            
+            result = await session.execute(stmt)
+            rows = result.all()
+            
+            feed_data = []
+            for art, ups, downs in rows:
+                d = _serialize_article(art)
+                d["upvotes"] = int(ups or 0)
+                d["downvotes"] = int(downs or 0)
+                feed_data.append(d)
+                
+            return {"source": "postgres_trending", "data": feed_data}
 
     if not category or category == "All":
         cached = await cache.get_cached_feed()
@@ -50,7 +81,7 @@ async def get_feed(category: str | None = None, limit: int | None = None):
     
         return {"source": "postgres_db", "data": feed_data}
         
-    # Semantic search with category
+    # Semantic search with category (Qdrant)
     encoder = get_encoder()
     qdrant = get_qdrant()
     settings = get_settings()
@@ -100,8 +131,10 @@ async def get_feed(category: str | None = None, limit: int | None = None):
                         "published_at": pub_iso,
                         "category": category,
                         "content": payload.get("content", ""),
-                        "ai_slop_score": None,
-                        "ai_slop_label": None,
+                        "ai_slop_score": payload.get("ai_slop_score"),
+                        "ai_slop_label": payload.get("ai_slop_label"),
+                        "upvotes": 0,
+                        "downvotes": 0,
                     })
                     
         except Exception as e:
@@ -114,7 +147,7 @@ async def get_feed(category: str | None = None, limit: int | None = None):
             )
             feed_data = [_serialize_article(a) for a in result.scalars().all()]
             
-    source = "qdrant_semantic" if (encoder and qdrant and raw_hits) else "postgres_fallback"
+    source = "qdrant_semantic" if (encoder and qdrant and 'raw_hits' in locals() and raw_hits) else "postgres_fallback"
     return {"source": source, "data": feed_data}
 
 

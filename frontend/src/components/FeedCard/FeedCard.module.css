@@ -88,7 +88,29 @@
   margin-bottom: 14px;
 }
 
-/* ── Footer: integrity + read more ── */
+.voteSummary {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--rule);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.upCount {
+  color: #1a7a52;
+  font-weight: 700;
+}
+
+.downCount {
+  color: #c8281e;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+/* ── Footer ── */
 .footer {
   display: flex;
   align-items: flex-end;

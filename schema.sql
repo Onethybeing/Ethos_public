@@ -77,3 +77,29 @@ CREATE TABLE IF NOT EXISTS engagement_events (
 
 CREATE INDEX IF NOT EXISTS ix_engagement_events_user_id    ON engagement_events (user_id);
 CREATE INDEX IF NOT EXISTS ix_engagement_events_article_id ON engagement_events (article_id);
+
+-- ── comments ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS comments (
+    id              VARCHAR         PRIMARY KEY,
+    user_id         VARCHAR         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    article_id      VARCHAR         NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    parent_id       VARCHAR         REFERENCES comments(id) ON DELETE SET NULL,
+    content         TEXT            NOT NULL,
+    is_deleted      BOOLEAN         NOT NULL DEFAULT false,
+    created_at      TIMESTAMPTZ     DEFAULT now(),
+    updated_at      TIMESTAMPTZ     DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_comments_user_id    ON comments (user_id);
+CREATE INDEX IF NOT EXISTS ix_comments_article_id ON comments (article_id);
+CREATE INDEX IF NOT EXISTS ix_comments_parent_id  ON comments (parent_id);
+
+-- ── article_votes ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS article_votes (
+    user_id         VARCHAR         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    article_id      VARCHAR         NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    vote            INTEGER         NOT NULL, -- 1 or -1
+    created_at      TIMESTAMPTZ     DEFAULT now(),
+    updated_at      TIMESTAMPTZ     DEFAULT now(),
+    PRIMARY KEY (user_id, article_id)
+);
