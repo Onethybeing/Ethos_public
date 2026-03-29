@@ -27,6 +27,7 @@ from backend.api.clusters import router as clusters_router
 from backend.api.leaderboard import router as leaderboard_router
 from backend.api.rephrase import router as rephrase_router
 from backend.api.engagement import router as engagement_router
+from backend.api.voice import router as voice_router
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(leaderboard_router)
     app.include_router(rephrase_router)
     app.include_router(engagement_router)
+    app.include_router(voice_router)
 
     @app.get("/health", tags=["System"])
     async def health():

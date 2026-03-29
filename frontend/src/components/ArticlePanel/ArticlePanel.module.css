@@ -239,6 +239,20 @@
   letter-spacing: 0.04em;
 }
 
+/* ── Voice mode picker ── */
+.voiceModes {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border: 1px solid var(--rule);
+  width: 100%;
+}
+
+.voiceModes .toggleBtn {
+  flex: 1;
+  font-size: 9px;
+}
+
 /* ── Loading / error text ── */
 .loadingText {
   font-family: var(--f-mono);

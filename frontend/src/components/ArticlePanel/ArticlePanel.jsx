@@ -6,7 +6,7 @@ import ClaimCard from '../ClaimCard/ClaimCard'
 import ClusterViz from '../ClusterViz/ClusterViz'
 import TerminalStream from '../ui/TerminalStream'
 import Button from '../ui/Button'
-import { factCheckArticle, getClusters, recordEvent, getArticle, getRephrase, getEngagementStatus } from '../../api/client'
+import { factCheckArticle, getClusters, recordEvent, getArticle, getRephrase, getEngagementStatus, getVoice } from '../../api/client'
 import { catColor, formatDate } from '../../utils/helpers'
 import EngagementBar from './EngagementBar'
 import CommentSection from './CommentSection'
@@ -34,6 +34,19 @@ const REPHRASE_LINES = [
   'Validating length and fidelity constraints...',
 ]
 
+const VOICE_LINES = [
+  'Analysing article content...',
+  'Crafting narration script...',
+  'Sending to Groq TTS engine...',
+  'Synthesising speech waveform...',
+]
+
+const VOICE_MODE_OPTS = [
+  { id: 'anchor',  label: 'News Anchor',    icon: '📺' },
+  { id: 'podcast', label: 'Casual Podcast', icon: '🎙' },
+  { id: 'drama',   label: 'Breaking Drama', icon: '⚡' },
+]
+
 export default function ArticlePanel({ article, onClose }) {
   const [fcState, setFcState] = useState('idle')  // idle | loading | slow | done | error
   const [fcData, setFcData] = useState(null)
@@ -45,6 +58,12 @@ export default function ArticlePanel({ article, onClose }) {
   const [content, setContent] = useState(article.content || article.excerpt || null)
   const [contentLoading, setContentLoading] = useState(!article.content)
   const [hasRead, setHasRead] = useState(true)
+  const [voiceMode, setVoiceMode] = useState('anchor')
+  const [voiceState, setVoiceState] = useState('idle')  // idle | loading | done | error
+  const [voiceData, setVoiceData] = useState(null)      // { script, audio_b64, label }
+  const [voiceAudioUrl, setVoiceAudioUrl] = useState(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const audioRef = useRef(null)
   const openTime = useRef(Date.now())
   const fcSlowTimer = useRef(null)
 
@@ -89,6 +108,13 @@ export default function ArticlePanel({ article, onClose }) {
     }
   }, [article.id, onClose])
 
+  // Revoke voice blob URL on unmount to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (voiceAudioUrl) URL.revokeObjectURL(voiceAudioUrl)
+    }
+  }, [voiceAudioUrl])
+
   async function runFactCheck() {
     setFcState('loading')
     // After 20s still loading → show "still processing" message instead of erroring
@@ -123,6 +149,43 @@ export default function ArticlePanel({ article, onClose }) {
       setRpState('done')
     } catch {
       setRpState('error')
+    }
+  }
+
+  async function loadVoice() {
+    // Revoke any previous blob URL
+    if (voiceAudioUrl) {
+      URL.revokeObjectURL(voiceAudioUrl)
+      setVoiceAudioUrl(null)
+    }
+    setIsPlaying(false)
+    setVoiceData(null)
+    setVoiceState('loading')
+    try {
+      const data = await getVoice(article.id, voiceMode)
+      // Decode base64 MP3 → Blob URL
+      const binary = atob(data.audio_b64)
+      const buf = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i)
+      const blob = new Blob([buf], { type: 'audio/mpeg' })
+      const url = URL.createObjectURL(blob)
+      setVoiceAudioUrl(url)
+      setVoiceData(data)
+      setVoiceState('done')
+    } catch {
+      setVoiceState('error')
+    }
+  }
+
+  function togglePlay() {
+    const audio = audioRef.current
+    if (!audio) return
+    if (isPlaying) {
+      audio.pause()
+      setIsPlaying(false)
+    } else {
+      audio.play()
+      setIsPlaying(true)
     }
   }
 
@@ -371,6 +434,130 @@ export default function ArticlePanel({ article, onClose }) {
                 >
                   {showRephrased ? '← Show Original' : '⟳ Show Rephrased Version'}
                 </Button>
+              )}
+
+              {/* ── Voice ── */}
+              <div className={styles.sectionDiv} style={{ marginTop: 32 }}>
+                <div className={styles.sectionHeavy} />
+                <div className={styles.sectionLabel}>
+                  <div className={styles.sectionMark} />
+                  Listen
+                </div>
+                <div className={styles.sectionHeavy} />
+              </div>
+
+              {/* Mode picker */}
+              <div className={styles.voiceModes}>
+                {VOICE_MODE_OPTS.map(opt => (
+                  <button
+                    key={opt.id}
+                    className={`${styles.toggleBtn} ${voiceMode === opt.id ? styles.active : ''}`}
+                    onClick={() => {
+                      setVoiceMode(opt.id)
+                      // Reset so user can regenerate in the new mode
+                      if (voiceState === 'done') setVoiceState('idle')
+                    }}
+                    disabled={voiceState === 'loading'}
+                    title={opt.label}
+                  >
+                    {opt.icon} {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {voiceState === 'idle' && (
+                <Button onClick={loadVoice}>▶ Generate Audio</Button>
+              )}
+              {voiceState === 'loading' && <TerminalStream lines={VOICE_LINES} />}
+              {voiceState === 'error' && (
+                <p className={styles.loadingText}>Voice unavailable — try again.</p>
+              )}
+              {voiceState === 'done' && voiceData && (
+                <>
+                  {/* Inline audio player */}
+                  <audio
+                    ref={audioRef}
+                    src={voiceAudioUrl}
+                    onEnded={() => setIsPlaying(false)}
+                    style={{ display: 'none' }}
+                  />
+                  <div style={{
+                    border: '1px solid var(--rule)',
+                    padding: '12px 14px',
+                    marginBottom: 12,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <Motion.button
+                        onClick={togglePlay}
+                        style={{
+                          width: 34, height: 34,
+                          background: 'var(--ink)',
+                          color: 'var(--paper)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: 'var(--f-mono)',
+                          fontSize: 14,
+                          flexShrink: 0,
+                        }}
+                        whileTap={{ scale: 0.92 }}
+                        whileHover={{ opacity: 0.8 }}
+                      >
+                        {isPlaying ? '⏸' : '▶'}
+                      </Motion.button>
+                      <div>
+                        <div style={{
+                          fontFamily: 'var(--f-mono)',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: '0.15em',
+                          textTransform: 'uppercase',
+                          color: 'var(--ink-muted)',
+                        }}>
+                          {voiceData.label}
+                        </div>
+                        <div style={{
+                          fontFamily: 'var(--f-mono)',
+                          fontSize: 10,
+                          color: 'var(--ink-muted)',
+                          marginTop: 2,
+                        }}>
+                          {isPlaying ? '● PLAYING' : '○ PAUSED'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={loadVoice}
+                        style={{
+                          marginLeft: 'auto',
+                          fontFamily: 'var(--f-mono)',
+                          fontSize: 9,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          color: 'var(--ink-muted)',
+                          background: 'none',
+                          border: '1px solid var(--rule)',
+                          padding: '4px 8px',
+                          cursor: 'pointer',
+                        }}
+                        title="Regenerate"
+                      >
+                        ↺
+                      </button>
+                    </div>
+                    {/* Script transcript */}
+                    <div style={{
+                      fontFamily: 'var(--f-mono)',
+                      fontSize: 10,
+                      color: 'var(--ink-muted)',
+                      lineHeight: 1.7,
+                      borderTop: '1px solid var(--rule)',
+                      paddingTop: 10,
+                      letterSpacing: '0.02em',
+                    }}>
+                      {voiceData.script}
+                    </div>
+                  </div>
+                </>
               )}
 
               <div style={{ height: 40 }} />

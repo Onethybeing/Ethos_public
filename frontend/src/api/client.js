@@ -195,6 +195,13 @@ export async function postComment(articleId, content, parentId = null) {
   return data;
 }
 
+export async function getVoice(articleId, mode = 'anchor') {
+  const { data } = await client.get(`/article/${articleId}/voice?mode=${mode}`, {
+    timeout: 60000,
+  });
+  return data;
+}
+
 export async function recordEvent(articleId, timeSpentSecs) {
   const userId = getCurrentUserId();
   if (!userId) throw new Error('No authenticated user found.');
