@@ -1,0 +1,283 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 12, 9, 0.5);
+  z-index: 200;
+  backdrop-filter: blur(2px);
+}
+
+/* ── Full-screen overlay ── */
+.panel {
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  overflow-y: auto;
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel::-webkit-scrollbar { width: 4px; }
+.panel::-webkit-scrollbar-track { background: var(--paper-dark); }
+.panel::-webkit-scrollbar-thumb { background: var(--rule); }
+
+/* ── Sticky close bar ── */
+.closeRow {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px 0;
+  background: linear-gradient(to bottom, var(--paper) 60%, transparent);
+}
+
+.closeBtn {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--ink-muted);
+  background: none;
+  border: 1px solid var(--rule);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.08em;
+}
+
+.closeBtn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ── Two-column reader layout ── */
+.readerLayout {
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 340px);
+  gap: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 32px;
+  flex: 1;
+}
+
+/* ── Reading column ── */
+.readingColumn {
+  max-width: 650px;
+  width: 100%;
+  padding: 24px 48px 80px 0;
+  border-right: 1px solid var(--rule);
+}
+
+/* ── Right rail ── */
+.rail {
+  padding: 24px 0 80px 36px;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.rail::-webkit-scrollbar { width: 3px; }
+.rail::-webkit-scrollbar-thumb { background: var(--rule); }
+
+/* ── Category rule ── */
+.catRule {
+  height: 6px;
+  margin-bottom: 20px;
+}
+
+/* ── Title ── */
+.title {
+  font-family: var(--f-display);
+  font-style: italic;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+/* ── Dateline ── */
+.dateline {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sourceLink {
+  color: var(--steel);
+  transition: opacity 0.15s;
+}
+.sourceLink:hover { opacity: 0.7; text-decoration: none; }
+
+/* ── Body toggle bar ── */
+.toggleBar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border: 1px solid var(--rule);
+  width: fit-content;
+}
+
+.toggleBtn {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 18px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toggleBtn.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ── Article body ── */
+.body {
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--ink-soft);
+  margin-bottom: 32px;
+}
+
+.body p { margin-bottom: 1em; }
+
+/* Drop cap */
+.body p:first-child::first-letter {
+  font-family: var(--f-display);
+  font-size: 4em;
+  font-weight: 900;
+  float: left;
+  line-height: 0.78;
+  margin-right: 6px;
+  margin-top: 5px;
+  color: var(--ink);
+}
+
+/* ── Rephrased footer ── */
+.rephrasedFooter {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+  margin-top: 8px;
+  letter-spacing: 0.03em;
+  font-style: italic;
+}
+
+.rephrasedFooter a {
+  color: var(--steel);
+}
+
+/* ── Section divider ── */
+.sectionDiv {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 18px;
+}
+
+.sectionLine { flex: 1; height: 1px; background: var(--rule); }
+.sectionHeavy { height: 3px; background: var(--ink); flex: 1; }
+
+.sectionLabel {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sectionMark {
+  width: 7px;
+  height: 7px;
+  background: var(--red);
+  flex-shrink: 0;
+}
+
+/* ── Fact check summary ── */
+.fcSummary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.countBadge {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Voice mode picker ── */
+.voiceModes {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border: 1px solid var(--rule);
+  width: 100%;
+}
+
+.voiceModes .toggleBtn {
+  flex: 1;
+  font-size: 9px;
+}
+
+/* ── Loading / error text ── */
+.loadingText {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ── Responsive: stack on narrow viewports ── */
+@media (max-width: 900px) {
+  .readerLayout {
+    grid-template-columns: 1fr;
+    padding: 0 20px;
+  }
+
+  .readingColumn {
+    border-right: none;
+    padding-right: 0;
+    max-width: 100%;
+  }
+
+  .rail {
+    padding-left: 0;
+    position: static;
+    max-height: none;
+    border-top: 3px solid var(--ink);
+  }
+}

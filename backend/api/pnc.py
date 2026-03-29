@@ -1,0 +1,167 @@
+"""
+Personal News Constitution (PNC) API router.
+
+Endpoints:
+  POST  /pnc/generate            — convert natural language → PNC JSON via LLM
+  POST  /pnc/{user_id}           — save/upsert a constitution
+  GET   /pnc/{user_id}           — fetch a user's constitution
+  PATCH /pnc/{user_id}           — partial update (user feedback loop, Stage 11)
+"""
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, ValidationError
+
+from backend.core.auth import get_current_user
+from backend.core.db.postgres import AsyncSessionLocal, UserConstitution
+from backend.core.db.postgres import User
+from backend.schemas.pnc import PersonalNewsConstitution
+from backend.services.pnc_service import generate_pnc
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/pnc", tags=["PNC"])
+
+
+# ── Request / response models ─────────────────────────────────────────────────
+
+class GenerateRequest(BaseModel):
+    natural_language: str
+    user_id: str = "new_user"
+
+
+class PatchRequest(BaseModel):
+    """Partial update — only include fields you want to change."""
+    epistemic_framework: dict | None = None
+    narrative_preferences: dict | None = None
+    topical_constraints: dict | None = None
+    complexity_preference: dict | None = None
+
+
+def _assert_user_access(route_user_id: str, current_user: User) -> None:
+    if route_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to access another user's constitution.",
+        )
+
+
+def _mark_onboarding_completed(db_user: User | None) -> None:
+    """Mark onboarding complete after a successful constitution write."""
+    if db_user and not db_user.onboarding_completed:
+        db_user.onboarding_completed = True
+        db_user.updated_at = datetime.now(timezone.utc)
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@router.post("/generate", response_model=PersonalNewsConstitution)
+async def generate_constitution(request: GenerateRequest):
+    """
+    Convert a natural-language description of news preferences into a structured PNC.
+
+    The LLM extracts and validates the constitution. Falls back to sensible defaults
+    if the LLM call fails.
+    """
+    if not request.natural_language.strip():
+        raise HTTPException(status_code=400, detail="natural_language cannot be empty.")
+
+    pnc = await generate_pnc(request.natural_language, request.user_id)
+    return pnc
+
+
+@router.post("/{user_id}", response_model=PersonalNewsConstitution)
+async def save_constitution(
+    user_id: str,
+    pnc: PersonalNewsConstitution,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Save or replace a user's Personal News Constitution.
+
+    The request body must be a complete PersonalNewsConstitution JSON.
+    """
+    _assert_user_access(user_id, current_user)
+    pnc.user_id = user_id  # ensure URL param takes precedence
+
+    async with AsyncSessionLocal() as session:
+        existing = await session.get(UserConstitution, user_id)
+        if existing:
+            existing.constitution = pnc.model_dump(exclude={"user_id"})
+            existing.updated_at = datetime.now(timezone.utc)
+        else:
+            session.add(UserConstitution(
+                user_id=user_id,
+                constitution=pnc.model_dump(exclude={"user_id"}),
+            ))
+
+        db_user = await session.get(User, user_id)
+        _mark_onboarding_completed(db_user)
+
+        await session.commit()
+
+    logger.info("Saved PNC for user %s.", user_id)
+    return pnc
+
+
+@router.get("/{user_id}", response_model=PersonalNewsConstitution)
+async def get_constitution(user_id: str, current_user: User = Depends(get_current_user)):
+    """Fetch a user's stored Personal News Constitution."""
+    _assert_user_access(user_id, current_user)
+
+    async with AsyncSessionLocal() as session:
+        record = await session.get(UserConstitution, user_id)
+
+    if not record:
+        raise HTTPException(status_code=404, detail="Constitution not found.")
+
+    data = {"user_id": user_id, **record.constitution}
+    try:
+        return PersonalNewsConstitution(**data)
+    except ValidationError:
+        logger.debug("Constitution for user %s is still uninitialized.", user_id)
+        raise HTTPException(status_code=404, detail="Constitution not found.")
+
+
+@router.patch("/{user_id}", response_model=PersonalNewsConstitution)
+async def update_constitution(
+    user_id: str,
+    patch: PatchRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Partial update of a user's constitution.
+
+    Supports the user feedback loop (Stage 11 in the spec): only the provided
+    fields are merged into the existing constitution.
+    """
+    _assert_user_access(user_id, current_user)
+
+    async with AsyncSessionLocal() as session:
+        record = await session.get(UserConstitution, user_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="Constitution not found.")
+
+        updates = patch.model_dump(exclude_none=True)
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields to update.")
+
+        existing = dict(record.constitution)
+        for key, value in updates.items():
+            if isinstance(value, dict) and isinstance(existing.get(key), dict):
+                existing[key] = {**existing[key], **value}
+            else:
+                existing[key] = value
+
+        record.constitution = existing
+        record.updated_at = datetime.now(timezone.utc)
+
+        db_user = await session.get(User, user_id)
+        _mark_onboarding_completed(db_user)
+
+        await session.commit()
+
+        logger.info("Patched PNC for user %s: %s", user_id, list(updates.keys()))
+        return PersonalNewsConstitution(**{"user_id": user_id, **existing})

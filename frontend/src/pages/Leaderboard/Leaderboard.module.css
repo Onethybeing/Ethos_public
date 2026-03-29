@@ -1,0 +1,188 @@
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+  width: 100%;
+}
+
+.header {
+  padding: 40px 0 20px;
+  border-bottom: 3px solid var(--ink);
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.pageTitle {
+  font-family: var(--f-display);
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+.subtitle {
+  font-family: var(--f-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-top: 6px;
+}
+
+/* ── My Score ── */
+.myScoreCard {
+  border: 2px solid var(--ink);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.myScoreLabel {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rule);
+  margin-bottom: 4px;
+}
+
+.myScoreNum {
+  font-family: var(--f-mono);
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--paper);
+  line-height: 1;
+}
+
+.myRankWrap { text-align: right; }
+.myRankLabel {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rule);
+  margin-bottom: 4px;
+}
+.myRankNum {
+  font-family: var(--f-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--paper);
+  line-height: 1;
+}
+
+/* ── Table ── */
+.table {
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+
+.tableHead {
+  display: grid;
+  grid-template-columns: 60px 1fr 160px;
+  gap: 0;
+  padding: 8px 20px;
+  border-bottom: 3px solid var(--ink);
+  background: var(--paper-dark);
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 60px 1fr 160px;
+  align-items: center;
+  gap: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--rule-light);
+  transition: background 0.12s;
+  border-left: 3px solid transparent;
+}
+.row:last-child { border-bottom: none; }
+.row:hover { background: var(--paper-dark); }
+.row.isMe {
+  border-left-color: var(--red);
+  background: var(--red-dim);
+}
+
+.rank {
+  font-family: var(--f-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.rank.r1 { color: var(--red); font-size: 1.2rem; }
+.rank.r2 { color: var(--ink-muted); }
+.rank.r3 { color: #b5830a; }
+
+.userInfo { padding: 0 12px; }
+.username {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.youBadge {
+  font-size: 9px;
+  color: var(--red);
+  letter-spacing: 0.08em;
+  border: 1px solid var(--red);
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.barTrack {
+  height: 4px;
+  background: var(--rule-light);
+  overflow: hidden;
+  border: 1px solid var(--rule);
+}
+
+.barFill {
+  height: 100%;
+  background: var(--ink);
+}
+
+.scoreCell {
+  font-family: var(--f-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+}
+
+/* ── Formula ── */
+.formula {
+  border: 1px solid var(--rule);
+  padding: 16px 20px;
+  margin-top: 20px;
+  background: var(--paper-dark);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  line-height: 2.2;
+}
+
+.formulaLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+  font-family: var(--f-ui, sans-serif);
+}

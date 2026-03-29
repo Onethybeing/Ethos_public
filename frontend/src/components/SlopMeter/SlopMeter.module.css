@@ -1,0 +1,96 @@
+.wrap {
+  border: 2px solid var(--rule);
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  background: var(--paper-dark);
+}
+
+.header {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scoreNum {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.trackOuter {
+  height: 12px;
+  background: var(--rule-light);
+  border: 1px solid var(--rule);
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.trackGradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    #1a7a52 0%,
+    #b5830a 50%,
+    #c8281e 100%
+  );
+  opacity: 0.15;
+}
+
+.trackFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  /* width set via style */
+  background: linear-gradient(
+    90deg,
+    #1a7a52 0%,
+    #b5830a 50%,
+    #c8281e 100%
+  );
+  background-size: 600% 100%;
+}
+
+.needle {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  background: var(--ink);
+  transform: translateX(-50%);
+}
+
+.legend {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.statusLine {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.06em;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}

@@ -1,0 +1,33 @@
+.terminal {
+  background: var(--ink);
+  color: #8aff8a;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  padding: 14px 18px;
+  line-height: 2;
+  min-height: 80px;
+  margin-top: 16px;
+}
+
+.line {
+  display: flex;
+  gap: 10px;
+}
+
+.ts {
+  color: #4a6a4a;
+  flex-shrink: 0;
+}
+
+.text {
+  color: #8aff8a;
+}
+
+.cursor {
+  animation: blink 0.8s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

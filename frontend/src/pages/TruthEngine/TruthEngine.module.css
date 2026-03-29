@@ -1,0 +1,172 @@
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 40px 60px;
+  width: 100%;
+}
+
+/* ── Header ── */
+.header {
+  padding: 40px 0 28px;
+  border-bottom: 3px solid var(--ink);
+  margin-bottom: 32px;
+}
+
+.volumeLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.rule1 { height: 1px; background: var(--rule); margin: 10px 0; }
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pageTitle {
+  font-family: var(--f-display);
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+}
+
+.volNum {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  letter-spacing: 0.08em;
+}
+
+.subtitle {
+  font-family: var(--f-body);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-muted);
+  margin-top: 8px;
+}
+
+/* ── Input area ── */
+.inputBox {
+  border: 2px solid var(--ink);
+  padding: 20px 22px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.inputLabel {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inputMark {
+  width: 7px;
+  height: 7px;
+  background: var(--red);
+}
+
+.textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--f-body);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink);
+  resize: vertical;
+  min-height: 140px;
+  caret-color: var(--red);
+}
+
+.textarea::placeholder {
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+.charCount {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--ink-dim);
+  text-align: right;
+  margin-top: 6px;
+}
+
+/* ── Sample chips ── */
+.samples {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.sampleChip {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  padding: 5px 12px;
+  border: 1px dashed var(--rule);
+  color: var(--ink-muted);
+  background: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+}
+.sampleChip:hover {
+  border-color: var(--ink);
+  border-style: solid;
+  color: var(--ink);
+}
+
+/* ── Results ── */
+.sectionDiv {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 16px;
+}
+.sectionLine { flex: 1; height: 1px; background: var(--rule); }
+.sectionHeavy { flex: 1; height: 3px; background: var(--ink); }
+.sectionLabel {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sectionMark { width: 7px; height: 7px; background: var(--red); }
+
+.summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.countBadge {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.04em;
+}
