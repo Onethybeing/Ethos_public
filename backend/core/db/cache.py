@@ -72,12 +72,14 @@ async def set_cached_fact_check(article_id: str, result: dict, ttl: int = 3600) 
 # ── Cluster results ────────────────────────────────────────────────────────
 
 async def get_cached_clusters(article_id: str) -> dict | None:
-    data = await _get_client().get(f"clusters:{article_id}")
+    limit = get_settings().background_article_limit
+    data = await _get_client().get(f"clusters:{limit}:{article_id}")
     return json.loads(data) if data else None
 
 
 async def set_cached_clusters(article_id: str, result: dict, ttl: int = 1800) -> None:
-    await _get_client().setex(f"clusters:{article_id}", ttl, json.dumps(result))
+    limit = get_settings().background_article_limit
+    await _get_client().setex(f"clusters:{limit}:{article_id}", ttl, json.dumps(result))
 
 
 # ── Rephrase results ───────────────────────────────────────────────────────

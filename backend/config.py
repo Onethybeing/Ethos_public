@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     ingestion_workers: int = 3
     scrape_timeout_secs: int = 10
     spacy_char_limit: int = 20_000
+    feed_article_limit: int = 50
+    background_article_limit: int = 200
 
     # ── Leaderboard Weights ───────────────────────────────────────────────
     weight_read: float = 1.0

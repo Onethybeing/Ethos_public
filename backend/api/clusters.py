@@ -25,7 +25,7 @@ async def get_clusters(article_id: str, current_user: User = Depends(get_current
     """
     Map alternative narrative perspectives for a given article.
 
-    Retrieves 50 semantically similar articles, clusters them with HDBSCAN,
+    Retrieves semantically similar articles (background limit), clusters them with HDBSCAN,
     and returns LLM-generated pillar summaries for each cluster.
 
     Cached in Redis for 30 minutes (clusters are stable over that window).

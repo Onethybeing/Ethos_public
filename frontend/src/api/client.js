@@ -98,8 +98,14 @@ function normalizeFactCheckResponse(payload = {}) {
 }
 
 export async function getFeed(category = 'All') {
-  const params = category !== 'All' ? `?category=${encodeURIComponent(category)}` : '';
-  const { data } = await client.get(`/feed${params}`);
+  const params = new URLSearchParams();
+  if (category !== 'All') {
+    params.set('category', category);
+  }
+  params.set('limit', '50');
+
+  const query = params.toString();
+  const { data } = await client.get(`/feed${query ? `?${query}` : ''}`);
   return data.data ?? data;
 }
 
@@ -129,7 +135,9 @@ export async function factCheckText(text) {
 }
 
 export async function getClusters(id) {
-  const { data } = await client.get(`/article/${id}/clusters`);
+  const { data } = await client.get(`/article/${id}/clusters`, {
+    timeout: 60000,
+  });
   return data;
 }
 

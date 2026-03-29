@@ -2,7 +2,7 @@
 Feed API router.
 
 Endpoints:
-  GET /feed                          — top 50 latest articles (Redis → Postgres)
+    GET /feed                          — latest articles (Redis → Postgres)
   GET /article/{article_id}          — single article by UUID
   GET /personalized_feed/{user_id}   — PNC-filtered, recency-weighted feed
 """
@@ -26,18 +26,21 @@ router = APIRouter(tags=["Feed"])
 
 
 @router.get("/feed")
-async def get_feed(category: str | None = None):
+async def get_feed(category: str | None = None, limit: int | None = None):
     """
-    Top 50 latest articles. If a category is provided, runs a semantic search via Qdrant to return the top 30 matches.
+    Latest articles. If a category is provided, runs a semantic search via Qdrant to return category matches.
     """
+    settings = get_settings()
+    feed_limit = limit if isinstance(limit, int) and limit > 0 else settings.feed_article_limit
+
     if not category or category == "All":
         cached = await cache.get_cached_feed()
         if cached:
-            return {"source": "redis_cache", "data": cached}
+            return {"source": "redis_cache", "data": cached[:feed_limit]}
     
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(Article).order_by(desc(Article.published_at)).limit(50)
+                select(Article).order_by(desc(Article.published_at)).limit(feed_limit)
             )
             articles = result.scalars().all()
             feed_data = [_serialize_article(a) for a in articles]
@@ -70,7 +73,7 @@ async def get_feed(category: str | None = None):
             raw_hits = qdrant.query_points(
                 collection_name=settings.qdrant_collection,
                 query=query_vector,
-                limit=30,
+                limit=feed_limit,
             ).points
             
             if raw_hits:
@@ -107,7 +110,7 @@ async def get_feed(category: str | None = None):
     if not feed_data:
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(Article).where(Article.category == category).order_by(desc(Article.published_at)).limit(30)
+                select(Article).where(Article.category == category).order_by(desc(Article.published_at)).limit(feed_limit)
             )
             feed_data = [_serialize_article(a) for a in result.scalars().all()]
             
@@ -174,13 +177,15 @@ async def get_personalized_feed(user_id: str, current_user: User = Depends(get_c
         qdrant = get_qdrant()
         settings = get_settings()
 
+        personalized_limit = settings.feed_article_limit
+
         if priority_domains and encoder and qdrant:
             try:
                 query_vector = encoder.encode(" ".join(priority_domains)).tolist()
                 raw_hits = qdrant.query_points(
                     collection_name=settings.qdrant_collection,
                     query=query_vector,
-                    limit=200,
+                    limit=settings.background_article_limit,
                 ).points
 
                 now = datetime.datetime.now(datetime.timezone.utc)
@@ -196,7 +201,7 @@ async def get_personalized_feed(user_id: str, current_user: User = Depends(get_c
                     scored.append((time_weighted, str(hit.id)))
 
                 scored.sort(reverse=True)
-                matched_ids = list(dict.fromkeys(doc_id for _, doc_id in scored))[:30]
+                matched_ids = list(dict.fromkeys(doc_id for _, doc_id in scored))[:personalized_limit]
 
                 if matched_ids:
                     result = await session.execute(
@@ -216,7 +221,7 @@ async def get_personalized_feed(user_id: str, current_user: User = Depends(get_c
                 query = query.where(or_(*[Article.category.ilike(f"%{d}%") for d in priority_domains]))
             for ex in excluded_topics:
                 query = query.where(~Article.category.ilike(f"%{ex}%"))
-            query = query.order_by(desc(Article.published_at)).limit(30)
+            query = query.order_by(desc(Article.published_at)).limit(personalized_limit)
             result = await session.execute(query)
             feed_data = [_serialize_article(a) for a in result.scalars().all()]
 

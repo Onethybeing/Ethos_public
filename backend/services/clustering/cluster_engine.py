@@ -125,7 +125,7 @@ async def get_narrative_clusters(article_id: str) -> ClusterResult:
         collection_name=settings.qdrant_collection,
         query=target_vector.tolist(),
         query_filter=query_filter,
-        limit=50,
+        limit=settings.background_article_limit,
         with_payload=True,
         with_vectors=True,
     ).points
