@@ -28,7 +28,7 @@ class SlopDetectorL2:
         "- Filler sentences that add no information\n"
         "- Lacks a specific time, place, or event anchor\n\n"
         "Return JSON only: "
-        '{"score": 0.0, "reasons": ["reason1", "reason2"]}\n\n'
+        '{{"score": 0.0, "reasons": ["reason1", "reason2"]}}\n\n'
         "Score: 0.0 = definitely human, 1.0 = definitely AI generated.\n\n"
         "Article:\n{text}"
     )
