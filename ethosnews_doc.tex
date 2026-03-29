@@ -1,0 +1,536 @@
+% ============================================================
+%  EthosNews — Technical & Product Documentation
+%  Economic Times GenAI Hackathon 2026
+%  Compile with: pdflatex (Overleaf default engine)
+%
+%  FILES NEEDED IN OVERLEAF (upload alongside this .tex):
+%    fig_arch.png       — System architecture diagram
+%    fig_ingest.png     — Ingestion pipeline diagram
+%    fig_pnc.png        — PNC to feed flow diagram
+%    img_factcheck.png  — Cropped infographic: fact-check section
+%    img_clustering.png — Cropped infographic: clustering section
+% ============================================================
+
+\documentclass[9pt,a4paper,twocolumn]{article}
+
+% ── Packages ────────────────────────────────────────────────
+\usepackage[a4paper, top=16mm, bottom=16mm, left=13mm, right=13mm,
+            columnsep=6mm]{geometry}
+\usepackage{fontenc}
+\usepackage{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{titling}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{mdframed}
+\usepackage{multicol}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{lmodern}
+\usepackage{hyperref}
+
+% ── Broadsheet Colour Palette (from frontend globals.css) ───
+\definecolor{paper}{HTML}{f7f2e9}
+\definecolor{ink}{HTML}{0e0c09}
+\definecolor{inksoft}{HTML}{2d2820}
+\definecolor{inkmuted}{HTML}{7a6f63}
+\definecolor{rule}{HTML}{c8bfb0}
+\definecolor{etred}{HTML}{c8281e}
+\definecolor{etgold}{HTML}{b5830a}
+\definecolor{steel}{HTML}{2a4a8a}
+\definecolor{mint}{HTML}{1a7a52}
+\definecolor{reddim}{HTML}{f5e8e7}
+
+% ── Page background ─────────────────────────────────────────
+\pagecolor{paper}
+\color{ink}
+
+% ── Hyperlinks ───────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=steel,
+  urlcolor=steel,
+  citecolor=etgold,
+}
+
+% ── Section heading styles ──────────────────────────────────
+\titleformat{\section}
+  {\fontfamily{lmr}\selectfont\bfseries\large\color{ink}}
+  {}
+  {0pt}
+  {\colorbox{ink}{\color{paper}\hspace{4pt}#1\hspace{4pt}}\vspace{2pt}\newline\textcolor{etred}{\rule{\columnwidth}{1.5pt}}}
+
+\titleformat{\subsection}
+  {\fontfamily{lmr}\selectfont\bfseries\normalsize\color{etred}}
+  {}
+  {0pt}
+  {#1}
+
+\titleformat{\subsubsection}
+  {\fontfamily{lmr}\selectfont\bfseries\small\color{etgold}}
+  {}
+  {0pt}
+  {#1}
+
+\titlespacing{\section}{0pt}{8pt}{4pt}
+\titlespacing{\subsection}{0pt}{6pt}{2pt}
+\titlespacing{\subsubsection}{0pt}{4pt}{2pt}
+
+% ── Caption style ────────────────────────────────────────────
+\captionsetup{
+  font={small,it},
+  labelfont={bf,color=inkmuted},
+  labelsep=period,
+  skip=3pt,
+}
+
+% ── List style ───────────────────────────────────────────────
+\setlist[itemize]{
+  leftmargin=*,
+  topsep=2pt,
+  itemsep=1pt,
+  parsep=0pt,
+  label={\textcolor{etred}{\textbullet}},
+}
+
+% ── Inline code style ────────────────────────────────────────
+\newcommand{\code}[1]{{\ttfamily\small\color{steel}#1}}
+
+% ── Formula box ─────────────────────────────────────────────
+\newmdenv[
+  linecolor=etgold,
+  linewidth=1pt,
+  backgroundcolor=white,
+  innerleftmargin=6pt,
+  innerrightmargin=6pt,
+  innertopmargin=5pt,
+  innerbottommargin=5pt,
+  skipabove=4pt,
+  skipbelow=4pt,
+]{formulabox}
+
+% ── Red rule box (highlight) ─────────────────────────────────
+\newmdenv[
+  linecolor=etred,
+  linewidth=1.5pt,
+  backgroundcolor=reddim,
+  innerleftmargin=6pt,
+  innerrightmargin=6pt,
+  innertopmargin=4pt,
+  innerbottommargin=4pt,
+  skipabove=4pt,
+  skipbelow=4pt,
+]{redbox}
+
+% ── Header / Footer ─────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{\footnotesize\color{inkmuted}\textit{EthosNews — ET GenAI Hackathon 2026}}
+\fancyhead[R]{\footnotesize\color{inkmuted}\textit{Phase 2 Prototype}}
+\fancyfoot[C]{\footnotesize\color{inkmuted}\thepage}
+
+% ── Paragraph spacing ────────────────────────────────────────
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+
+% ============================================================
+\begin{document}
+
+% ── MASTHEAD (full width) ────────────────────────────────────
+\twocolumn[{%
+  \begin{center}
+    {\color{etred}\rule{\textwidth}{3pt}}\\[4pt]
+    {\fontfamily{lmr}\selectfont\Huge\bfseries\color{ink} ETHOSNEWS}\\[2pt]
+    {\large\color{inkmuted}\textit{From Algorithmic Feeds to Epistemic Agency}}\\[3pt]
+    {\small\color{inkmuted}%
+      \textbf{Economic Times GenAI Hackathon 2026} \quad\textcolor{rule}{|}\quad
+      Phase 2 Prototype Submission \quad\textcolor{rule}{|}\quad
+      March 2026}\\[4pt]
+    {\color{etred}\rule{\textwidth}{1pt}}\\[2pt]
+    {\color{rule}\rule{\textwidth}{0.5pt}}\\[8pt]
+  \end{center}
+}]
+
+% ============================================================
+\section{Product Overview}
+
+In 2026, business news is still delivered as it was two decades ago — static text, one feed for everyone, no way to know what to trust. EthosNews is a \textbf{participatory, intent-driven news ecosystem} built to fix that. It places the user's own values, interests, and epistemic preferences at the centre of every decision the system makes — from which articles surface, to how verified each one is, to what other perspectives exist on the same story.
+
+\begin{redbox}
+\small\textbf{Core idea:} A user's intent is not a filter applied on top of an algorithm. It \textit{is} the algorithm.
+\end{redbox}
+
+\subsection{The Three Problems}
+
+\textbf{Cognitive Capture.} Engagement algorithms repeatedly surface 3–5 dominant viewpoints, creating a narrative monoculture. A user reads widely but sees narrowly.
+
+\textbf{Information Overload.} Without semantic filtering tied to a reader's actual goals, volume becomes noise. Most articles are irrelevant to most readers, yet arrive anyway.
+
+\textbf{Truth Decay.} AI-generated content has degraded trust signals. Verification lag means false claims spread faster than corrections. Readers have lost calibration for what to believe.
+
+\subsection{ET Hackathon Tracks Addressed}
+
+\textbf{My ET — The Personalised Newsroom.} A mutual fund investor, a startup founder, and a student each receive a structurally different news experience — driven not by topic tags alone but by epistemic mode, verification threshold, diversity preference, and reading depth.
+
+\textbf{News Navigator — Interactive Intelligence Briefings.} Instead of reading eight separate articles on one story, a user gets a single AI-powered layer: claim-by-claim verification with evidence, and a live map of every alternative perspective on that story.
+
+\subsection{Who It Is For}
+
+\begin{center}
+\small
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{User} & \textbf{How EthosNews Serves Them} \\
+\midrule
+General Consumer & PNC-filtered feed + AI slop score on every article \\
+Journalist & One-click fact-check + narrative cluster map \\
+Fact-Checker & 4-stage pipeline: extract → gather → rerank → classify \\
+Student & Readability depth + data density controls in PNC \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{The Daily Experience}
+
+A user opens EthosNews and immediately sees their \textbf{Personalised Feed} — articles ranked by how well they match a constitution the user defined once, in plain English. On any article, three AI actions are one click away: \textbf{Verify Claims} runs a real-time fact-check; \textbf{Narrative Clusters} surfaces every alternative perspective on the story; \textbf{Listen} generates a narrated audio version in the user's chosen style. Every article also carries a \textbf{Slop Meter} — a locally-computed score indicating the likelihood that the content was AI-generated, with no external API required.
+
+% ============================================================
+\section{System Architecture}
+
+EthosNews has four layers: a React frontend, a FastAPI backend, an AI processing layer, and a three-database data layer. All communication uses JWT-authenticated REST.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth,height=7cm,keepaspectratio]{fig_arch.png}
+  \caption{End-to-end system architecture.}
+\end{figure}
+
+\subsection{Technology Stack}
+
+\begin{center}
+\small
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} \\
+\midrule
+Frontend      & React 19, Vite 8, framer-motion \\
+Backend       & Python 3.11, FastAPI, uv \\
+Primary DB    & PostgreSQL + asyncpg \\
+Cache         & Redis (TTL: 2–60 min per type) \\
+Vector DB     & Qdrant (cosine, 384-dim) \\
+Embeddings    & SentenceTransformer all-MiniLM-L6-v2 \\
+Reranking     & CrossEncoder ms-marco-MiniLM-L-6-v2 \\
+NLP           & spaCy en\_core\_web\_sm \\
+LLM (fast)    & llama-3.1-8b-instant / gpt-4o-mini \\
+LLM (strong)  & llama-3.3-70b-versatile / gpt-4o \\
+Auth          & JWT HS256, bcrypt \\
+Data source   & GDELT (real-time global news stream) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Ingestion Pipeline}
+
+Every 15 minutes, a background process polls GDELT for new articles. What arrives is a stream of event metadata and source URLs — the actual article text has to be fetched, cleaned, and understood before it is useful.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth,height=8cm,keepaspectratio]{fig_ingest.png}
+  \caption{GDELT ingestion pipeline — producer/consumer with 3 parallel workers.}
+\end{figure}
+
+\textbf{Clever detail — deterministic IDs.} Each article's database ID is computed as \code{uuid5(NAMESPACE\_URL, url)}. The same URL always produces the same UUID. This makes deduplication a simple point-existence check in Qdrant — no separate seen-set, no extra lookup table.
+
+Articles shorter than 150 words are dropped. Survivors are scraped, entity-extracted via spaCy, embedded into a 384-dimensional vector, scored for AI generation, and stored simultaneously in Qdrant (for semantic search) and PostgreSQL (for structured queries).
+
+% ============================================================
+\section{Personal News Constitution}
+
+The Personal News Constitution (PNC) is the identity layer of EthosNews. It is not a list of topic preferences — it is a structured representation of \textit{how} a user relates to information, not just \textit{what} they want to read about.
+
+\subsection{The Schema}
+
+A user types a description in plain English. A strong-tier LLM (temp=0.2) reads it and extracts a four-field structured document:
+
+\begin{center}
+\small
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Field} & \textbf{What It Controls} \\
+\midrule
+\texttt{epistemic\_framework} & Primary mode (empiricist, rationalist, narrative, pragmatist, humanist) + verification threshold 0–1 \\
+\texttt{narrative\_preferences} & Diversity weight 0–1 + bias tolerance (low/medium/high) \\
+\texttt{topical\_constraints} & Priority domains (max 10) + excluded topics \\
+\texttt{complexity\_preference} & Readability depth (beginner/intermediate/expert) + data density \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\texttt{epistemic\_framework.primary\_mode} is the most novel field. It does not describe \textit{what} topics the user wants — it describes \textit{how} they want to relate to information. An \textit{empiricist} wants high-evidence data-backed stories. A \textit{narrative} reader wants rich contextual storytelling. This mode propagates into LLM prompts throughout the system. If the LLM call fails, hardcoded defaults are used so the user always gets a feed.
+
+\subsection{How PNC Drives the Feed}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth,height=7cm,keepaspectratio]{fig_pnc.png}
+  \caption{From natural-language constitution to personalised feed.}
+\end{figure}
+
+The user's \texttt{priority\_domains} are joined into a string and encoded into a 384-dim query vector. Qdrant returns the top 200 semantically similar articles. Each candidate is then scored with a time-decay function:
+
+\begin{formulabox}
+\small
+\centering
+$\text{score} = \text{similarity} \times 0.85^{\,\text{days\_old}}$
+\end{formulabox}
+
+A 3-day-old article retains 61\% of its semantic score; a 7-day-old article retains 32\%. This keeps the feed fresh without discarding relevant older reporting. Articles matching \texttt{excluded\_topics} are removed by substring filter. The top 30 survivors are returned.
+
+% ============================================================
+\section{AI Pipelines}
+
+\subsection{Agentic Fact-Checking}
+
+When a user clicks \textit{Verify Claims}, a 4-stage pipeline runs on the article in real time.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth,keepaspectratio]{img_factcheck.png}
+  \caption{Fact-check pipeline: extract → evidence → rerank → classify.}
+\end{figure}
+
+\subsubsection{Stage 1 — Claim Extraction}
+A fast-tier LLM (temp=0.0) breaks the article into at most 8 atomic factual claims — statements that can, in principle, be verified against an external source. If the LLM fails, the system falls back to simple sentence splitting.
+
+\subsubsection{Stage 2 — Evidence Gathering (Parallel)}
+For every claim, two searches run simultaneously: a semantic search against the Qdrant article corpus (top 15 hits), and a live web search via Tavily (top 5 results, only if an API key is configured). Each result is trimmed to 600 characters of context.
+
+\subsubsection{Stage 3 — Batched CrossEncoder Reranking}
+All \texttt{[claim, passage]} pairs across \textit{all} claims are flattened into a single list and scored in one \code{ce.predict()} call. This batching is the most computationally intensive step — doing it in one forward pass rather than N×M individual calls is a significant latency saving. The top 4 passages per claim are kept. Raw scores are normalised via sigmoid with a softening divisor of 3.0, preventing moderate-confidence evidence from collapsing to 0 or 1.
+
+\subsubsection{Stage 4 — LLM Classification}
+Each claim is judged against its top-4 evidence passages by a fast-tier LLM. Concurrent calls are throttled by \code{asyncio.Semaphore(3)} to respect API rate limits. Each claim receives one of three verdicts: \textbf{Supported}, \textbf{Contradicted}, or \textbf{Not Mentioned}, along with a confidence score and supporting URLs. The fraction of \textit{Not Mentioned} claims is surfaced to the user as the \textbf{unverifiable ratio} — a proxy for how well-corroborated the story is.
+
+\subsection{Narrative Divergence Clustering}
+
+When a user clicks \textit{Narrative Clusters}, the system maps every alternative perspective on the article's story — not just similar articles, but the full landscape of how the same event is being framed differently.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth,keepaspectratio]{img_clustering.png}
+  \caption{Narrative divergence: HDBSCAN groups articles by semantic distance into viewpoint clusters.}
+\end{figure}
+
+Qdrant retrieves the 50 most semantically similar articles. HDBSCAN clusters them by their 384-dim vectors (\code{min\_cluster\_size=3}, Euclidean distance, EOM selection). Each cluster is a distinct \textbf{narrative pillar} — a coherent viewpoint on the story.
+
+Every pillar receives a \textbf{divergence score}:
+
+\begin{formulabox}
+\small
+\centering
+$\text{divergence} = 0.8 \times \text{cosine\_dist} + 0.2 \times \text{tone\_std}$
+\end{formulabox}
+
+\texttt{cosine\_dist} measures how far the cluster's articles sit from its own centroid — high distance means internally diverse viewpoints. \texttt{tone\_std} is the standard deviation of GDELT's pre-computed sentiment scores across the cluster — high variance means the cluster mixes positive and negative framings of the same event, a signal of genuine narrative tension not visible in semantic space alone.
+
+Three representative article URLs per cluster are selected by blending centroid proximity (weight 0.6) and entity coverage breadth (weight 0.4). A strong-tier LLM (temp=0.3) writes a 2–3 sentence plain-English summary for each pillar. HDBSCAN is used rather than k-means because it does not require specifying the number of clusters in advance and handles noise points gracefully — important when story clusters are irregular in size.
+
+\subsection{Voice Narration}
+
+Any article can be listened to in three broadcast styles, generated end-to-end without pre-recorded assets.
+
+\begin{center}
+\small
+\begin{tabularx}{\columnwidth}{@{}llX@{}}
+\toprule
+\textbf{Mode} & \textbf{Voice} & \textbf{Style} \\
+\midrule
+Anchor  & Fritz-PlayAI  & Authoritative broadcast — lead with the single most important fact \\
+Podcast & Nova-PlayAI   & Conversational, warm, rhetorical questions, like explaining to a friend \\
+Drama   & Thunder-PlayAI & Cinematic tension, short punchy sentences, gut-punch close \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+A fast-tier LLM (temp=0.75) generates a \textasciitilde100-word spoken script tailored to the mode's system prompt. The Groq TTS model (\code{playai-tts}) synthesises it to MP3. Because the Groq SDK is synchronous, the call runs inside \code{asyncio.to\_thread()} to avoid blocking the FastAPI event loop. The response returns the script text alongside a base64-encoded MP3 — the frontend plays it directly without a file download.
+
+\subsection{AI Slop Detection}
+
+Every ingested article is scored for AI-generation likelihood using five statistical signals computed entirely locally — no LLM call, no external API.
+
+\begin{center}
+\small
+\begin{tabularx}{\columnwidth}{@{}Xlr@{}}
+\toprule
+\textbf{Signal} & \textbf{What It Measures} & \textbf{Weight} \\
+\midrule
+Burstiness        & Sentence-length variation (AI text is uniform) & 0.30 \\
+N-gram Repetition & Repeated 4-gram frequency                      & 0.25 \\
+Entity Density    & Named entities per 100 words                   & 0.20 \\
+Passive Voice     & Fraction of passive sentences                  & 0.15 \\
+Uniformity        & \% of sentences in 12–25 word range            & 0.10 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{formulabox}
+\small
+\centering
+$\text{score} = 0.30\,B + 0.25\,R + 0.20\,E + 0.15\,P + 0.10\,U$
+
+\smallskip
+$< 0.35 \rightarrow \textbf{human} \quad
+ 0.35\text{–}0.65 \rightarrow \textbf{uncertain} \quad
+ > 0.65 \rightarrow \textbf{ai\_generated}$
+\end{formulabox}
+
+Only texts scoring \textit{uncertain} trigger a Layer 2 LLM review, keeping costs and latency low for clear cases. The merged score weights L1 at 0.4 and L2 at 0.6 — when statistical signals are inconclusive, semantic judgement is more informative.
+
+% ============================================================
+\section{Leaderboard \& Gamification}
+
+The leaderboard redefines what good engagement looks like. A user earns more not by spending more time on the platform, but by consuming content that is constitutionally aligned, perspectivally diverse, and verified.
+
+\subsection{Per-Read Engagement Score}
+
+Every article read generates an \code{engagement\_event} with three components:
+
+\begin{formulabox}
+\small
+\centering
+$\text{score} = 0.40\,\text{PNC\_align} + 0.30\,\text{diversity} + 0.30\,\text{time}$
+
+\smallskip
+$\text{time} = \dfrac{\min(\text{secs}, 600)}{600} \times (1 - \text{slop\_score})$
+\end{formulabox}
+
+\textbf{PNC alignment} is the cosine similarity between the article's embedding and the user's constitution vector, normalised to [0,1]. \textbf{Diversity} is 1.0 if the article spans two or more narrative clusters, 0.5 otherwise — rewarding users who read across perspectives. \textbf{Time} is capped at 10 minutes and \textit{down-weighted by the article's slop score} — spending time on AI-generated content accrues less reward than the same time on verified human journalism.
+
+\subsection{Ranking Formula}
+
+\begin{formulabox}
+\small
+\centering
+$\text{rank} = (\text{reads} \times 1.0 + \text{participations} \times 2.5)$
+$\times\;(1 + \log_{10}(\text{streak}+1) \times 0.5)$
+\end{formulabox}
+
+Active participation (triggering fact-checks, exploring clusters) carries 2.5× the weight of passive reading. The \(\log_{10}\) streak multiplier gives diminishing returns — a long-time user's advantage over a new engaged user is bounded, preventing compounding lock-in.
+
+All events are written to an immutable \code{engagement\_events} table in PostgreSQL (full audit trail with component breakdown). The running leaderboard total is maintained in a Redis sorted set — O(log N) inserts, O(log N + K) top-K reads, with atomic increments.
+
+% ============================================================
+\section{Implementation}
+
+\subsection{Backend Services}
+
+\begin{center}
+\small
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{File} & \textbf{Responsibility} \\
+\midrule
+\texttt{core/clients.py}       & Thread-safe singleton registry for all heavy ML models — SentenceTransformer, CrossEncoder, spaCy, Qdrant. Double-checked locking prevents redundant initialisation under concurrent requests. \\
+\texttt{core/llm.py}           & Unified async \texttt{chat()} interface over Groq/OpenAI/Gemini. Dual-tier (fast/strong). Gemini's sync SDK runs in \texttt{run\_in\_executor}. \\
+\texttt{core/cache.py}         & Redis helpers with per-type TTLs: feed 2–5 min, articles 1 hr, fact-checks 1 hr, clusters 30 min. \\
+\texttt{services/ingestion/}   & GDELT producer-consumer. \texttt{uuid5} dedup. Scrape → embed → slop → store. \\
+\texttt{services/fact\_checker/} & 4-stage pipeline. Batched CrossEncoder in single forward pass. \\
+\texttt{services/clustering/}  & HDBSCAN on Qdrant vectors. Divergence = cosine + tone\_std blend. \\
+\texttt{services/slop\_detector/} & L1 statistical (5 signals). L2 LLM fallback only for \textit{uncertain} band. \\
+\texttt{services/pnc\_service.py} & LLM extraction with JSON schema injection. Hardcoded fallback defaults. \\
+\texttt{services/leaderboard/} & Per-read scoring. Weekly aggregate with log streak multiplier. Redis + Postgres dual write. \\
+\texttt{api/voice.py}          & LLM script (3 modes) + Groq TTS in \texttt{asyncio.to\_thread}. \\
+\texttt{api/feed.py}           & \texttt{\_excerpt\_from\_text()} strips URLs + whitespace, truncates to 320 chars. Regex pre-compiled at module load. \texttt{\_serialize\_qdrant\_hit()} normalises raw Qdrant payload for feed responses. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{API Surface}
+
+\begin{center}
+\small
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Router} & \textbf{Endpoints} \\
+\midrule
+Auth        & \texttt{POST /auth/signup} · \texttt{login} · \texttt{GET /auth/me} \\
+Feed        & \texttt{GET /feed} · \texttt{/article/\{id\}} · \texttt{/personalized\_feed/\{uid\}} \\
+Fact-Check  & \texttt{POST /article/\{id\}/fact-check} · \texttt{/fact-check} \\
+Clusters    & \texttt{GET /article/\{id\}/clusters} \\
+PNC         & \texttt{POST /pnc/generate} · \texttt{/pnc/\{uid\}} · \texttt{PATCH /pnc/\{uid\}} \\
+Leaderboard & \texttt{POST /leaderboard/event} · \texttt{GET /leaderboard/top} \\
+Voice       & \texttt{GET /article/\{id\}/voice?mode=anchor|podcast|drama} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Database Schema}
+
+\textbf{users} — id, username, email, password\_hash, onboarding\_completed, streak\_count, active\_participations
+
+\textbf{articles} — id (\textit{uuid5 of url}), title, content, url, source, image\_url, published\_at, category, avg\_tone, num\_mentions, country\_code, ai\_slop\_score, ai\_slop\_label
+
+\textbf{user\_constitutions} — user\_id (PK/FK), constitution (JSONB), updated\_at
+
+\textbf{engagement\_events} — id, user\_id, article\_id, pnc\_alignment, diversity\_score, time\_score, total\_score, created\_at
+
+% ============================================================
+\section{Design Decisions}
+
+\begin{description}[style=unboxed, leftmargin=0pt, itemsep=3pt]
+
+\item[\textcolor{etred}{Qdrant over FAISS.}]
+Qdrant supports payload filtering \textit{alongside} vector search. Category-scoped cluster retrieval works without pulling all vectors into memory first.
+
+\item[\textcolor{etred}{HDBSCAN over k-means.}]
+Story clusters are irregular in size and shape. HDBSCAN requires no \textit{k} in advance and handles noise points gracefully — both critical for open-ended news clustering.
+
+\item[\textcolor{etred}{uuid5 for article IDs.}]
+Deterministic IDs from URLs make deduplication idempotent. Re-ingesting the same article is a no-op with a single Qdrant point-existence check.
+
+\item[\textcolor{etred}{GDELT \texttt{avg\_tone} in divergence scoring.}]
+GDELT provides pre-computed sentiment per event. Using it as a divergence signal adds a non-embedding dimension that captures framing differences not visible in pure semantic space.
+
+\item[\textcolor{etred}{Redis sorted set for leaderboard.}]
+O(log N) writes and reads, atomic increments, natural top-K queries — no aggregation on Postgres for real-time leaderboard reads.
+
+\item[\textcolor{etred}{Slop L2 only on uncertain band.}]
+Running an LLM on every article would be expensive. Statistical signals handle the clear cases cheaply; the LLM is reserved for the ambiguous middle, keeping p95 latency low.
+
+\item[\textcolor{etred}{TTS in thread pool.}]
+The Groq TTS SDK is synchronous. \code{asyncio.to\_thread()} offloads the blocking call to a worker thread so the event loop stays responsive during audio generation.
+
+\end{description}
+
+% ============================================================
+\section{Future Directions}
+
+\begin{itemize}
+  \item \textbf{Rephrase API} — adapt article content per PNC \texttt{readability\_depth} and \texttt{epistemic\_framework}: the same story rewritten for a beginner versus an expert, or for a narrative reader versus an empiricist.
+  \item \textbf{PNC feedback loop} — implicit signals from reading behaviour (time spent, clusters explored, fact-checks triggered) fed back to refine the constitution over time.
+  \item \textbf{Vernacular adaptation} — culturally-adapted translation into Hindi, Tamil, Telugu, Bengali using the existing LLM provider abstraction — not literal translation but context-aware localisation.
+  \item \textbf{Browser extension} — PNC-based slop detection and claim verification as an overlay on any news website, without opening the app.
+  \item \textbf{LLM-as-Judge moderation} — evaluating user comment quality against constitutional alignment, distinguishing substantive contribution from noise.
+  \item \textbf{Mobile application} — native iOS/Android with push alerts for high-divergence story events.
+\end{itemize}
+
+% ── Footer rule ──────────────────────────────────────────────
+\vfill
+\noindent{\color{etred}\rule{\columnwidth}{1.5pt}}\\[2pt]
+\noindent{\footnotesize\color{inkmuted}
+  \textit{EthosNews Phase 2 Prototype} \quad\textcolor{rule}{|}\quad
+  \textit{ET GenAI Hackathon 2026} \quad\textcolor{rule}{|}\quad
+  \textit{Full source: FastAPI + React 19 + Qdrant + PostgreSQL + Redis}
+}
+
+\end{document}

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import uuid
-from typing import List, Optional
+from typing import List
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, delete, update
-from sqlalchemy.orm import selectinload
 
 from backend.core.auth import get_current_user
 from backend.core.db.postgres import (

@@ -60,10 +60,9 @@ export default function ArticlePanel({ article, onClose }) {
   const [hasRead, setHasRead] = useState(true)
   const [voiceMode, setVoiceMode] = useState('anchor')
   const [voiceState, setVoiceState] = useState('idle')  // idle | loading | done | error
-  const [voiceData, setVoiceData] = useState(null)      // { script, audio_b64, label }
-  const [voiceAudioUrl, setVoiceAudioUrl] = useState(null)
+  const [voiceData, setVoiceData] = useState(null)      // { script, label }
   const [isPlaying, setIsPlaying] = useState(false)
-  const audioRef = useRef(null)
+  const utteranceRef = useRef(null)
   const openTime = useRef(Date.now())
   const fcSlowTimer = useRef(null)
 
@@ -108,12 +107,10 @@ export default function ArticlePanel({ article, onClose }) {
     }
   }, [article.id, onClose])
 
-  // Revoke voice blob URL on unmount to avoid memory leaks
+  // Stop speech when panel closes
   useEffect(() => {
-    return () => {
-      if (voiceAudioUrl) URL.revokeObjectURL(voiceAudioUrl)
-    }
-  }, [voiceAudioUrl])
+    return () => window.speechSynthesis.cancel()
+  }, [])
 
   async function runFactCheck() {
     setFcState('loading')
@@ -153,23 +150,13 @@ export default function ArticlePanel({ article, onClose }) {
   }
 
   async function loadVoice() {
-    // Revoke any previous blob URL
-    if (voiceAudioUrl) {
-      URL.revokeObjectURL(voiceAudioUrl)
-      setVoiceAudioUrl(null)
-    }
+    // Stop any ongoing speech
+    window.speechSynthesis.cancel()
     setIsPlaying(false)
     setVoiceData(null)
     setVoiceState('loading')
     try {
       const data = await getVoice(article.id, voiceMode)
-      // Decode base64 MP3 → Blob URL
-      const binary = atob(data.audio_b64)
-      const buf = new Uint8Array(binary.length)
-      for (let i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i)
-      const blob = new Blob([buf], { type: 'audio/mpeg' })
-      const url = URL.createObjectURL(blob)
-      setVoiceAudioUrl(url)
       setVoiceData(data)
       setVoiceState('done')
     } catch {
@@ -178,13 +165,26 @@ export default function ArticlePanel({ article, onClose }) {
   }
 
   function togglePlay() {
-    const audio = audioRef.current
-    if (!audio) return
     if (isPlaying) {
-      audio.pause()
+      window.speechSynthesis.pause()
       setIsPlaying(false)
-    } else {
-      audio.play()
+    } else if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume()
+      setIsPlaying(true)
+    } else if (voiceData?.script) {
+      const utter = new SpeechSynthesisUtterance(voiceData.script)
+      // Tune delivery per mode
+      if (voiceMode === 'anchor') {
+        utter.rate = 0.95; utter.pitch = 1.0
+      } else if (voiceMode === 'podcast') {
+        utter.rate = 1.1; utter.pitch = 1.1
+      } else {
+        utter.rate = 0.88; utter.pitch = 0.85
+      }
+      utter.onend = () => setIsPlaying(false)
+      utter.onerror = () => setIsPlaying(false)
+      utteranceRef.current = utter
+      window.speechSynthesis.speak(utter)
       setIsPlaying(true)
     }
   }
@@ -474,13 +474,6 @@ export default function ArticlePanel({ article, onClose }) {
               )}
               {voiceState === 'done' && voiceData && (
                 <>
-                  {/* Inline audio player */}
-                  <audio
-                    ref={audioRef}
-                    src={voiceAudioUrl}
-                    onEnded={() => setIsPlaying(false)}
-                    style={{ display: 'none' }}
-                  />
                   <div style={{
                     border: '1px solid var(--rule)',
                     padding: '12px 14px',
