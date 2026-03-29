@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS articles (
     image_url       VARCHAR,
     published_at    TIMESTAMPTZ,
     category        VARCHAR,
+    avg_tone        FLOAT,
+    num_mentions    INTEGER,
+    country_code    VARCHAR,
 
     -- populated by the ingestion pipeline slop detector
     ai_slop_score   FLOAT,

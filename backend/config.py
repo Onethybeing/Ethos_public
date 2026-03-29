@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     fact_check_max_concurrent: int = 3
 
     # ── Ingestion tuning ───────────────────────────────────────────────────
-    gdelt_poll_interval_secs: int = 60
+    gdelt_poll_interval_secs: int = 900
     ingestion_workers: int = 3
     scrape_timeout_secs: int = 10
     spacy_char_limit: int = 20_000

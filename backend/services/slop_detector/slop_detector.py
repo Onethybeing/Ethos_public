@@ -168,7 +168,7 @@ class SlopDetector:
         # If > 70% of sentences fall exactly in this band, it's highly uniform/AI.
         return min(1.0, uniformity_ratio / 0.70)
 
-    def analyze(self, text: str) -> dict:
+    def analyze(self, text: str, doc=None) -> dict:
         """
         Analyzes the text using local statistical signals to detect AI generation.
         
@@ -181,15 +181,16 @@ class SlopDetector:
         # Edge Cases
         if not text or not text.strip():
             return self._build_empty_response()
-            
-        doc = self.nlp(text)
+
+        if doc is None:
+            doc = self.nlp(text)
         
         # Filter purely for actual words (ignore punctuation/whitespace)
         words = [token.text.lower() for token in doc if not token.is_punct and not token.is_space]
         word_count = len(words)
         
-        # If text is too short, return uncertain
-        if word_count < 50:
+        # If text is too short, return insufficient content.
+        if word_count < 150:
             return self._build_empty_response()
 
         # Compute Base Metrics
@@ -236,8 +237,8 @@ class SlopDetector:
     def _build_empty_response(self) -> dict:
         """Helper to return the default response for invalid/short edge cases."""
         return {
-            "ai_slop_score": 0.0,
-            "ai_slop_label": "uncertain",
+            "ai_slop_score": None,
+            "ai_slop_label": "insufficient_content",
             "burstiness_score": 0.0,
             "repetition_ratio": 0.0,
             "entity_density": 0.0,

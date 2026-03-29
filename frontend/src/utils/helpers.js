@@ -13,12 +13,14 @@ export function formatDate(isoString) {
 }
 
 export function slopColor(score) {
+  if (typeof score !== 'number' || Number.isNaN(score)) return '#7a6f63';
   if (score < 0.3) return '#1a7a52';
   if (score < 0.7) return '#b5830a';
   return '#c8281e';
 }
 
 export function slopLabel(score) {
+  if (typeof score !== 'number' || Number.isNaN(score)) return 'Insufficient';
   if (score < 0.3) return 'Human';
   if (score < 0.7) return 'Mixed';
   return 'AI Slop';

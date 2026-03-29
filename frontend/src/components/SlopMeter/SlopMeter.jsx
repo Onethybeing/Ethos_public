@@ -4,21 +4,23 @@ import { slopColor, slopLabel } from '../../utils/helpers'
 import styles from './SlopMeter.module.css'
 
 export default function SlopMeter({ score }) {
+  const hasScore = typeof score === 'number' && !Number.isNaN(score)
   const raw = useMotionValue(0)
   const spring = useSpring(raw, { stiffness: 100, damping: 22, restDelta: 0.001 })
   const needleLeft = useTransform(spring, [0, 1], ['0%', '100%'])
   const fillWidth  = useTransform(spring, [0, 1], ['0%', '100%'])
 
   useEffect(() => {
-    const t = setTimeout(() => raw.set(score), 120)
+    const t = setTimeout(() => raw.set(hasScore ? score : 0), 120)
     return () => clearTimeout(t)
-  }, [score])
+  }, [score, hasScore])
 
   const color = slopColor(score)
   const label = slopLabel(score)
-  const pct   = Math.round(score * 100)
+  const pct   = hasScore ? Math.round(score * 100) : 'N/A'
 
   const statusLabel =
+    !hasScore ? 'Insufficient Content for Reliable Analysis' :
     score < 0.3 ? 'Predominantly Human-Written' :
     score < 0.7 ? 'Mixed — Verify Claims Independently' :
                   'High AI-Generated Content Detected'
@@ -27,7 +29,7 @@ export default function SlopMeter({ score }) {
     <div className={styles.wrap}>
       <div className={styles.header}>
         <span>Content Integrity Analysis</span>
-        <span className={styles.scoreNum} style={{ color }}>{pct}%</span>
+        <span className={styles.scoreNum} style={{ color }}>{hasScore ? `${pct}%` : pct}</span>
       </div>
 
       <div className={styles.trackOuter}>

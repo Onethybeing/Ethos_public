@@ -42,7 +42,7 @@ class SlopDetectorL2:
 
     async def analyze(self, text: str) -> dict | None:
         """Call the LLM; return {score, reasons} or None on failure."""
-        truncated = text[:1500]
+        truncated = text[:4000]
         messages = [
             {"role": "user", "content": self._PROMPT_TEMPLATE.format(text=truncated)}
         ]

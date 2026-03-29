@@ -11,10 +11,11 @@ const cardVariants = {
 }
 
 export default function FeedCard({ article, index = 0, featured = false, onClick }) {
+  const hasSlopScore = typeof article.ai_slop_score === 'number' && !Number.isNaN(article.ai_slop_score)
   const cc = catColor(article.category)
   const sc = slopColor(article.ai_slop_score)
   const sl = slopLabel(article.ai_slop_score)
-  const pct = Math.round(article.ai_slop_score * 100)
+  const pct = hasSlopScore ? Math.round(article.ai_slop_score * 100) : 'N/A'
 
   return (
     <motion.article
@@ -55,7 +56,7 @@ export default function FeedCard({ article, index = 0, featured = false, onClick
       <div className={styles.footer}>
         <div className={styles.integritySeal}>
           <span className={styles.sealScore}>
-            {sl === 'Human' ? '●' : sl === 'Mixed' ? '◑' : '○'} {pct}%
+            {sl === 'Human' ? '●' : sl === 'Mixed' ? '◑' : sl === 'AI Slop' ? '○' : '·'} {hasSlopScore ? `${pct}%` : pct}
           </span>
           <span className={styles.sealLabel}>{sl}</span>
         </div>

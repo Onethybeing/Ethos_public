@@ -52,6 +52,9 @@ class Article(Base):
     image_url = Column(String, nullable=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
     category = Column(String, nullable=True)
+    avg_tone = Column(Float, nullable=True)
+    num_mentions = Column(Integer, nullable=True)
+    country_code = Column(String, nullable=True)
     ai_slop_score = Column(Float, nullable=True)
     ai_slop_label = Column(String, nullable=True)
 
@@ -145,6 +148,12 @@ _MIGRATIONS: list[tuple[str, str]] = [
         "AND u.onboarding_completed = FALSE "
         "AND (uc.constitution->'epistemic_framework'->>'primary_mode') = 'empiricist'"
     )),
+    ("008_add_gdelt_enrichment_columns", (
+        "ALTER TABLE articles "
+        "ADD COLUMN IF NOT EXISTS avg_tone FLOAT, "
+        "ADD COLUMN IF NOT EXISTS num_mentions INTEGER, "
+        "ADD COLUMN IF NOT EXISTS country_code VARCHAR"
+    )),
 ]
 
 
@@ -204,6 +213,9 @@ async def save_article(article_data: dict) -> bool:
             image_url=article_data.get("image_url"),
             published_at=pub_date,
             category=article_data.get("category"),
+            avg_tone=article_data.get("avg_tone"),
+            num_mentions=article_data.get("num_mentions"),
+            country_code=article_data.get("country_code"),
             ai_slop_score=article_data.get("ai_slop_score"),
             ai_slop_label=article_data.get("ai_slop_label"),
         )
