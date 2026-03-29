@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 class EpistemicFramework(BaseModel):
     """The user's preferred epistemic approach to evaluating news."""
 
-    primary_mode: Literal["empiricist", "rationalist", "narrative"]
+    primary_mode: Literal["all", "empiricist", "rationalist", "narrative", "pragmatist", "humanist"]
     verification_threshold: float = Field(
         ge=0.0, le=1.0,
         description="0.0 = accept anything, 1.0 = demand hard evidence.",
@@ -76,7 +76,7 @@ PNC_SYSTEM_PROMPT = textwrap.dedent("""\
     {
       "user_id": "<string — use the provided user_id or 'new_user' if not given>",
       "epistemic_framework": {
-        "primary_mode": "<'empiricist' | 'rationalist' | 'narrative'>",
+        "primary_mode": "<'all' | 'empiricist' | 'rationalist' | 'narrative' | 'pragmatist' | 'humanist'>",
         "verification_threshold": <float 0.0–1.0>
       },
       "narrative_preferences": {
@@ -98,7 +98,7 @@ PNC_SYSTEM_PROMPT = textwrap.dedent("""\
     1. Return ONLY the JSON object — no markdown fences, no commentary.
     2. Infer reasonable defaults when the user does not state a preference
        (e.g. diversity_weight = 0.5, bias_tolerance = "medium").
-    3. primary_mode must be exactly one of the three allowed values.
+    3. primary_mode must be exactly one of the allowed values.
     4. All float fields must be between 0.0 and 1.0 inclusive.
     5. priority_domains and excluded_topics should each contain 1–10 items
        derived from the user's description.

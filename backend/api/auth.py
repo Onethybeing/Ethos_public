@@ -48,7 +48,7 @@ def _empty_constitution() -> dict:
     """Return a valid default PNC structure for first-time users."""
     return {
         "epistemic_framework": {
-            "primary_mode": "empiricist",
+            "primary_mode": "all",
             "verification_threshold": 0.7,
         },
         "narrative_preferences": {

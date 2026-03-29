@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 _FALLBACK_PNC = {
     "epistemic_framework": {
-        "primary_mode": "empiricist",
+        "primary_mode": "all",
         "verification_threshold": 0.7,
     },
     "narrative_preferences": {

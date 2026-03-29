@@ -136,6 +136,15 @@ _MIGRATIONS: list[tuple[str, str]] = [
         "ALTER TABLE users "
         "ADD COLUMN IF NOT EXISTS active_participations INTEGER NOT NULL DEFAULT 0"
     )),
+    ("008_default_epistemic_mode_all", (
+        "UPDATE user_constitutions uc "
+        "SET constitution = jsonb_set(uc.constitution, '{epistemic_framework,primary_mode}', '\"all\"'::jsonb, true), "
+        "updated_at = now() "
+        "FROM users u "
+        "WHERE u.id = uc.user_id "
+        "AND u.onboarding_completed = FALSE "
+        "AND (uc.constitution->'epistemic_framework'->>'primary_mode') = 'empiricist'"
+    )),
 ]
 
 

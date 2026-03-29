@@ -7,9 +7,12 @@ import styles from './Constitution.module.css'
 const TOTAL_STEPS = 4
 
 const MODES = [
+  { id: 'all',         icon: '🌐', name: 'All',         desc: 'Balance empiricist evidence, rationalist reasoning, and narrative context together.' },
   { id: 'empiricist',  icon: '🔬', name: 'Empiricist',  desc: 'Prioritise peer-reviewed evidence, primary sources, and quantifiable claims.' },
   { id: 'rationalist', icon: '🧠', name: 'Rationalist', desc: 'Favour logical consistency, first-principles reasoning, and systematic analysis.' },
   { id: 'narrative',   icon: '📖', name: 'Narrative',   desc: 'Value contextual storytelling, lived experience, and qualitative framing.' },
+  { id: 'pragmatist',  icon: '🛠️', name: 'Pragmatist',  desc: 'Prioritise practical consequences, policy outcomes, and real-world feasibility.' },
+  { id: 'humanist',    icon: '🤝', name: 'Humanist',    desc: 'Center dignity, social impact, and community wellbeing in story framing.' },
 ]
 
 function hasMeaningfulConstitution(constitution) {
@@ -96,7 +99,7 @@ export default function Constitution({
 
   const [form, setForm] = useState({
     nl: '',
-    mode: 'empiricist',
+    mode: 'all',
     vThresh: 0.78,
     divWeight: 0.65,
     biasT: 'low',
