@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import datetime
 import logging
-import math
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, or_, select, func, case
@@ -23,6 +23,9 @@ from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Feed"])
+
+_WS_RE = re.compile(r"\s+")
+_URL_RE = re.compile(r"https?://\S+", flags=re.IGNORECASE)
 
 
 @router.get("/feed")
@@ -54,14 +57,12 @@ async def get_feed(category: str | None = None, limit: int | None = None, trendi
             
             result = await session.execute(stmt)
             rows = result.all()
-            
-            feed_data = []
-            for art, ups, downs in rows:
-                d = _serialize_article(art)
-                d["upvotes"] = int(ups or 0)
-                d["downvotes"] = int(downs or 0)
-                feed_data.append(d)
-                
+
+            feed_data = [
+                _serialize_article(art, votes=(int(ups or 0), int(downs or 0)))
+                for art, ups, downs in rows
+            ]
+
             return {"source": "postgres_trending", "data": feed_data}
 
     if not category or category == "All":
@@ -84,10 +85,10 @@ async def get_feed(category: str | None = None, limit: int | None = None, trendi
     # Semantic search with category (Qdrant)
     encoder = get_encoder()
     qdrant = get_qdrant()
-    settings = get_settings()
-    
+
     feed_data = []
-    
+    has_qdrant_hits = False
+
     if encoder and qdrant:
         try:
             CATEGORY_DEFS = {
@@ -106,37 +107,11 @@ async def get_feed(category: str | None = None, limit: int | None = None, trendi
                 query=query_vector,
                 limit=feed_limit,
             ).points
-            
+
             if raw_hits:
-                import datetime
-                for h in raw_hits:
-                    payload = h.payload or {}
-                    ts = payload.get("timestamp")
-                    pub_iso = None
-                    if ts:
-                        try:
-                            if len(ts) == 14 and ts.isdigit():
-                                pub_iso = datetime.datetime.strptime(ts, "%Y%m%d%H%M%S").replace(tzinfo=datetime.timezone.utc).isoformat()
-                            else:
-                                pub_iso = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")).isoformat()
-                        except Exception:
-                            pass
-                            
-                    feed_data.append({
-                        "id": str(h.id),
-                        "title": payload.get("title", "Untitled"),
-                        "url": payload.get("source", ""),
-                        "source": payload.get("source", ""),
-                        "image_url": None,
-                        "published_at": pub_iso,
-                        "category": category,
-                        "content": payload.get("content", ""),
-                        "ai_slop_score": payload.get("ai_slop_score"),
-                        "ai_slop_label": payload.get("ai_slop_label"),
-                        "upvotes": 0,
-                        "downvotes": 0,
-                    })
-                    
+                has_qdrant_hits = True
+                feed_data = [_serialize_qdrant_hit(h, fallback_category=category) for h in raw_hits]
+
         except Exception as e:
             logger.warning("Qdrant category search failed for '%s': %s", category, e)
             
@@ -147,7 +122,7 @@ async def get_feed(category: str | None = None, limit: int | None = None, trendi
             )
             feed_data = [_serialize_article(a) for a in result.scalars().all()]
             
-    source = "qdrant_semantic" if (encoder and qdrant and 'raw_hits' in locals() and raw_hits) else "postgres_fallback"
+    source = "qdrant_semantic" if has_qdrant_hits else "postgres_fallback"
     return {"source": source, "data": feed_data}
 
 
@@ -267,7 +242,11 @@ async def get_personalized_feed(user_id: str, current_user: User = Depends(get_c
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _serialize_article(article: Article, include_content: bool = False) -> dict:
+def _serialize_article(
+    article: Article,
+    include_content: bool = False,
+    votes: tuple[int, int] | None = None,
+) -> dict:
     data = {
         "id": article.id,
         "title": article.title,
@@ -276,12 +255,68 @@ def _serialize_article(article: Article, include_content: bool = False) -> dict:
         "image_url": article.image_url,
         "published_at": article.published_at.isoformat() if article.published_at else None,
         "category": article.category,
+        "excerpt": _excerpt_from_text(article.content),
         "ai_slop_score": article.ai_slop_score,
         "ai_slop_label": article.ai_slop_label,
     }
+
+    if votes is not None:
+        upvotes, downvotes = votes
+        data["upvotes"] = upvotes
+        data["downvotes"] = downvotes
+
     if include_content:
         data["content"] = article.content
+
     return data
+
+
+def _serialize_qdrant_hit(hit, fallback_category: str | None = None) -> dict:
+    payload = hit.payload or {}
+    return {
+        "id": str(hit.id),
+        "title": payload.get("title", "Untitled"),
+        "url": payload.get("url") or payload.get("source", ""),
+        "source": payload.get("source_name") or payload.get("source", ""),
+        "image_url": None,
+        "published_at": _parse_qdrant_timestamp(payload.get("timestamp")),
+        "category": payload.get("category") or fallback_category,
+        "excerpt": _excerpt_from_text(payload.get("content")),
+        "ai_slop_score": payload.get("ai_slop_score"),
+        "ai_slop_label": payload.get("ai_slop_label"),
+        "upvotes": 0,
+        "downvotes": 0,
+    }
+
+
+def _parse_qdrant_timestamp(ts: str | None) -> str | None:
+    if not ts:
+        return None
+
+    try:
+        if len(ts) == 14 and ts.isdigit():
+            return datetime.datetime.strptime(ts, "%Y%m%d%H%M%S").replace(
+                tzinfo=datetime.timezone.utc
+            ).isoformat()
+
+        return datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")).isoformat()
+    except Exception:
+        return None
+
+
+def _excerpt_from_text(text: str | None, limit: int = 320) -> str:
+    if not text:
+        return ""
+
+    normalized = _WS_RE.sub(" ", str(text)).strip()
+    if not normalized:
+        return ""
+
+    without_urls = _URL_RE.sub("", normalized).strip()
+    if not without_urls:
+        return ""
+
+    return without_urls if len(without_urls) <= limit else f"{without_urls[:limit].rstrip()}..."
 
 
 def _parse_days_old(ts_str: str, now: datetime.datetime) -> float:

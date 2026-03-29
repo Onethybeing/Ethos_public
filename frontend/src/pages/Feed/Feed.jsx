@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import FeedCard from '../../components/FeedCard/FeedCard'
 import ArticlePanel from '../../components/ArticlePanel/ArticlePanel'
 import { SkeletonCard } from '../../components/ui/Skeleton'
-import { getFeed, getPersonalizedFeed } from '../../api/client'
+import { getFeed, getPersonalizedFeed, getArticle } from '../../api/client'
 import styles from './Feed.module.css'
 
 const CATEGORIES = ['All', 'Technology', 'Finance', 'Science', 'Politics', 'Health', 'Policy']
@@ -15,9 +15,10 @@ export default function Feed() {
   const [filter, setFilter] = useState('All')
   const [trending, setTrending] = useState(false)
   const [selected, setSelected] = useState(null)
+  const prefetchedArticlesRef = useRef(new Map())
+  const prefetchInFlightRef = useRef(new Map())
 
   useEffect(() => {
-    setLoading(true)
     const fetchPromise = personalized ? getPersonalizedFeed() : getFeed(filter, trending)
     fetchPromise
       .then(data => setArticles(data || []))
@@ -28,6 +29,33 @@ export default function Feed() {
   const filtered = personalized
     ? (filter === 'All' ? articles : articles.filter(a => a.category === filter))
     : articles
+
+  function getHydratedArticle(article) {
+    const prefetched = prefetchedArticlesRef.current.get(article.id)
+    return prefetched ? { ...article, ...prefetched } : article
+  }
+
+  function prefetchArticle(articleId) {
+    if (!articleId) return
+    if (prefetchedArticlesRef.current.has(articleId) || prefetchInFlightRef.current.has(articleId)) return
+
+    const request = getArticle(articleId)
+      .then((full) => {
+        if (!full) return
+        prefetchedArticlesRef.current.set(articleId, full)
+
+        setArticles(prev => prev.map(item => (item.id === articleId ? { ...item, ...full } : item)))
+        setSelected(prev => (prev && prev.id === articleId ? { ...prev, ...full } : prev))
+      })
+      .catch(() => {
+        // Prefetch is opportunistic; failures should not block normal click behavior.
+      })
+      .finally(() => {
+        prefetchInFlightRef.current.delete(articleId)
+      })
+
+    prefetchInFlightRef.current.set(articleId, request)
+  }
 
   return (
     <div className={styles.page}>
@@ -49,21 +77,30 @@ export default function Feed() {
           <button
             key={cat}
             className={`${styles.filterBtn} ${filter === cat ? styles.active : ''}`}
-            onClick={() => setFilter(cat)}
+            onClick={() => {
+              setLoading(true)
+              setFilter(cat)
+            }}
           >
             {cat}
           </button>
         ))}
 
         <div className={styles.toggleGroup}>
-          <div className={styles.toggleWrap} onClick={() => setTrending(t => !t)}>
+          <div className={styles.toggleWrap} onClick={() => {
+            setLoading(true)
+            setTrending(t => !t)
+          }}>
             <div className={`${styles.toggle} ${trending ? styles.on : ''}`}>
               <div className={styles.toggleThumb} />
             </div>
             Trending
           </div>
 
-          <div className={styles.toggleWrap} onClick={() => setPersonalized(p => !p)}>
+          <div className={styles.toggleWrap} onClick={() => {
+            setLoading(true)
+            setPersonalized(p => !p)
+          }}>
             <div className={`${styles.toggle} ${personalized ? styles.on : ''}`}>
               <div className={styles.toggleThumb} />
             </div>
@@ -88,7 +125,11 @@ export default function Feed() {
                 article={article}
                 index={i}
                 featured={i === 0 && filter === 'All'}
-                onClick={() => setSelected(article)}
+                onHover={() => prefetchArticle(article.id)}
+                onClick={() => {
+                  prefetchArticle(article.id)
+                  setSelected(getHydratedArticle(article))
+                }}
               />
             ))
         }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion as Motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import SlopMeter from '../SlopMeter/SlopMeter'
 import ClaimCard from '../ClaimCard/ClaimCard'
@@ -42,22 +42,41 @@ export default function ArticlePanel({ article, onClose }) {
   const [rpState, setRpState] = useState('idle')
   const [rpData, setRpData] = useState(null)
   const [showRephrased, setShowRephrased] = useState(false)
-  const [content, setContent] = useState(article.content || null)
+  const [content, setContent] = useState(article.content || article.excerpt || null)
   const [contentLoading, setContentLoading] = useState(!article.content)
   const [hasRead, setHasRead] = useState(true)
   const openTime = useRef(Date.now())
   const fcSlowTimer = useRef(null)
 
   useEffect(() => {
+    setContent(article.content || article.excerpt || null)
+    setContentLoading(!article.content)
+
     if (article.content) return
+
+    let cancelled = false
+
     getArticle(article.id)
-      .then(full => setContent(full?.content || ''))
-      .catch(() => setContent(''))
-      .finally(() => setContentLoading(false))
-  }, [article.id])
+      .then(full => {
+        if (cancelled) return
+        setContent(full?.content || article.excerpt || '')
+      })
+      .catch(() => {
+        if (cancelled) return
+        if (!article.excerpt) setContent('')
+      })
+      .finally(() => {
+        if (!cancelled) setContentLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [article.id, article.content, article.excerpt])
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    const openedAt = openTime.current
     document.addEventListener('keydown', onKey)
 
     // Initial check for read status (we can still track it for analytics)
@@ -65,10 +84,10 @@ export default function ArticlePanel({ article, onClose }) {
 
     return () => {
       document.removeEventListener('keydown', onKey)
-      const secs = Math.floor((Date.now() - openTime.current) / 1000)
+      const secs = Math.floor((Date.now() - openedAt) / 1000)
       if (secs >= 5) recordEvent(article.id, secs)
     }
-  }, [article.id])
+  }, [article.id, onClose])
 
   async function runFactCheck() {
     setFcState('loading')
@@ -118,7 +137,7 @@ export default function ArticlePanel({ article, onClose }) {
     <AnimatePresence>
       <>
         {/* Backdrop */}
-        <motion.div
+        <Motion.div
           className={styles.backdrop}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -127,7 +146,7 @@ export default function ArticlePanel({ article, onClose }) {
         />
 
         {/* Full-screen panel */}
-        <motion.div
+        <Motion.div
           className={styles.panel}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -136,14 +155,14 @@ export default function ArticlePanel({ article, onClose }) {
         >
           {/* Sticky close bar */}
           <div className={styles.closeRow}>
-            <motion.button
+            <Motion.button
               className={styles.closeBtn}
               onClick={onClose}
               whileHover={{ rotate: 90 }}
               transition={{ type: 'spring', stiffness: 500, damping: 20 }}
             >
               <X size={13} /> ESC
-            </motion.button>
+            </Motion.button>
           </div>
 
           {/* Two-column reader layout */}
@@ -189,14 +208,18 @@ export default function ArticlePanel({ article, onClose }) {
 
               {/* Article body */}
               <div className={styles.body}>
-                {contentLoading
-                  ? <p className={styles.loadingText}>Loading article…</p>
-                  : showRephrased && rpData
-                    ? rpData.rephrased_content.split('\n').filter(Boolean).map((para, i) => <p key={i}>{para}</p>)
-                    : content
-                      ? content.split('\n').filter(Boolean).map((para, i) => <p key={i}>{para}</p>)
+                {showRephrased && rpData
+                  ? rpData.rephrased_content.split('\n').filter(Boolean).map((para, i) => <p key={i}>{para}</p>)
+                  : content
+                    ? content.split('\n').filter(Boolean).map((para, i) => <p key={i}>{para}</p>)
+                    : contentLoading
+                      ? <p className={styles.loadingText}>Loading article…</p>
                       : <p className={styles.loadingText}>Content unavailable.</p>
                 }
+
+                {!showRephrased && contentLoading && content && (
+                  <p className={styles.loadingText}>Loading full article…</p>
+                )}
               </div>
 
               {/* Rephrased footer */}
@@ -264,7 +287,7 @@ export default function ArticlePanel({ article, onClose }) {
                       const barColor = ev.verdict === 'supported' ? '#1a7a52'
                         : ev.verdict === 'contradicted' ? '#c8281e' : '#b5830a'
                       return (
-                        <motion.div
+                        <Motion.div
                           key={i}
                           title={`${ev.claim.slice(0, 60)}… — ${Math.round(ev.confidence * 100)}%`}
                           style={{ flex: 1, background: barColor, opacity: 0.75, borderRadius: 1 }}
@@ -353,7 +376,7 @@ export default function ArticlePanel({ article, onClose }) {
               <div style={{ height: 40 }} />
             </div>
           </div>
-        </motion.div>
+        </Motion.div>
       </>
     </AnimatePresence >
   )

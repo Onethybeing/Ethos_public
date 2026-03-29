@@ -1,17 +1,12 @@
 from __future__ import annotations
 
 import json
-import logging
-from typing import TYPE_CHECKING
 
 from backend.config import get_settings
 
-if TYPE_CHECKING:
-    import redis.asyncio as redis_type
-
-logger = logging.getLogger(__name__)
-
 _redis_client = None
+_GLOBAL_FEED_CACHE_KEY = "feed:global:v2"
+_USER_FEED_CACHE_PREFIX = "feed:user:v2:"
 
 
 def _get_client():
@@ -28,23 +23,23 @@ def _get_client():
 # ── Global feed (all users) ────────────────────────────────────────────────
 
 async def get_cached_feed() -> list | None:
-    data = await _get_client().get("feed:global")
+    data = await _get_client().get(_GLOBAL_FEED_CACHE_KEY)
     return json.loads(data) if data else None
 
 
 async def set_cached_feed(feed_data: list, ttl: int = 300) -> None:
-    await _get_client().setex("feed:global", ttl, json.dumps(feed_data))
+    await _get_client().setex(_GLOBAL_FEED_CACHE_KEY, ttl, json.dumps(feed_data))
 
 
 # ── Per-user personalized feed ─────────────────────────────────────────────
 
 async def get_cached_user_feed(user_id: str) -> list | None:
-    data = await _get_client().get(f"feed:user:{user_id}")
+    data = await _get_client().get(f"{_USER_FEED_CACHE_PREFIX}{user_id}")
     return json.loads(data) if data else None
 
 
 async def set_cached_user_feed(user_id: str, feed_data: list, ttl: int = 120) -> None:
-    await _get_client().setex(f"feed:user:{user_id}", ttl, json.dumps(feed_data))
+    await _get_client().setex(f"{_USER_FEED_CACHE_PREFIX}{user_id}", ttl, json.dumps(feed_data))
 
 
 # ── Individual article ─────────────────────────────────────────────────────

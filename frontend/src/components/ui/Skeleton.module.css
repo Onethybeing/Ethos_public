@@ -2,11 +2,12 @@
   border: 1px solid var(--rule);
   border-left: 4px solid var(--rule);
   padding: 16px 18px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
   break-inside: avoid;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 320px;
 }
 
 .line {
