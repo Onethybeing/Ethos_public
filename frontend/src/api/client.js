@@ -97,8 +97,9 @@ function normalizeFactCheckResponse(payload = {}) {
   };
 }
 
-export async function getFeed() {
-  const { data } = await client.get('/feed');
+export async function getFeed(category = 'All') {
+  const params = category !== 'All' ? `?category=${encodeURIComponent(category)}` : '';
+  const { data } = await client.get(`/feed${params}`);
   return data.data ?? data;
 }
 

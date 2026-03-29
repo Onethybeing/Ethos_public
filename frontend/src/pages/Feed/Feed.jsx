@@ -9,24 +9,24 @@ import styles from './Feed.module.css'
 const CATEGORIES = ['All', 'Technology', 'Finance', 'Science', 'Politics', 'Health', 'Policy']
 
 export default function Feed() {
-  const [articles,     setArticles]     = useState([])
-  const [loading,      setLoading]      = useState(true)
+  const [articles, setArticles] = useState([])
+  const [loading, setLoading] = useState(true)
   const [personalized, setPersonalized] = useState(false)
-  const [filter,       setFilter]       = useState('All')
-  const [selected,     setSelected]     = useState(null)
+  const [filter, setFilter] = useState('All')
+  const [selected, setSelected] = useState(null)
 
   useEffect(() => {
     setLoading(true)
-    const fetch = personalized ? getPersonalizedFeed : getFeed
-    fetch()
+    const fetchPromise = personalized ? getPersonalizedFeed() : getFeed(filter)
+    fetchPromise
       .then(data => setArticles(data || []))
       .catch(() => setArticles([]))
       .finally(() => setLoading(false))
-  }, [personalized])
+  }, [personalized, filter])
 
-  const filtered = filter === 'All'
-    ? articles
-    : articles.filter(a => a.category === filter)
+  const filtered = personalized
+    ? (filter === 'All' ? articles : articles.filter(a => a.category === filter))
+    : articles
 
   return (
     <div className={styles.page}>

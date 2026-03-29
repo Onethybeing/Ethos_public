@@ -26,26 +26,93 @@ router = APIRouter(tags=["Feed"])
 
 
 @router.get("/feed")
-async def get_feed():
+async def get_feed(category: str | None = None):
     """
-    Top 50 latest articles.
-    Hits Redis cache first (5-min TTL), then falls back to Postgres.
+    Top 50 latest articles. If a category is provided, runs a semantic search via Qdrant to return the top 30 matches.
     """
-    cached = await cache.get_cached_feed()
-    if cached:
-        return {"source": "redis_cache", "data": cached}
-
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Article).order_by(desc(Article.published_at)).limit(50)
-        )
-        articles = result.scalars().all()
-        feed_data = [_serialize_article(a) for a in articles]
-
-    if feed_data:
-        await cache.set_cached_feed(feed_data)
-
-    return {"source": "postgres_db", "data": feed_data}
+    if not category or category == "All":
+        cached = await cache.get_cached_feed()
+        if cached:
+            return {"source": "redis_cache", "data": cached}
+    
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Article).order_by(desc(Article.published_at)).limit(50)
+            )
+            articles = result.scalars().all()
+            feed_data = [_serialize_article(a) for a in articles]
+    
+        if feed_data:
+            await cache.set_cached_feed(feed_data)
+    
+        return {"source": "postgres_db", "data": feed_data}
+        
+    # Semantic search with category
+    encoder = get_encoder()
+    qdrant = get_qdrant()
+    settings = get_settings()
+    
+    feed_data = []
+    
+    if encoder and qdrant:
+        try:
+            CATEGORY_DEFS = {
+                "Technology": "Technology Software AI Startups Gadgets Computing Engineering Internet",
+                "Finance": "Finance Markets Economy Stocks Banking Crypto Business Investment",
+                "Science": "Science Physics Biology Space Astronomy Research Chemistry",
+                "Politics": "Politics Government Elections Policies Diplomacy Congress Law",
+                "Health": "Health Medicine Wellness Healthcare Disease Fitness Diet",
+                "Policy": "Policy Regulation Law Governance Legislation Public Affairs Rules",
+            }
+            query_str = CATEGORY_DEFS.get(category, category)
+            query_vector = encoder.encode(query_str).tolist()
+            
+            raw_hits = qdrant.query_points(
+                collection_name=settings.qdrant_collection,
+                query=query_vector,
+                limit=30,
+            ).points
+            
+            if raw_hits:
+                import datetime
+                for h in raw_hits:
+                    payload = h.payload or {}
+                    ts = payload.get("timestamp")
+                    pub_iso = None
+                    if ts:
+                        try:
+                            if len(ts) == 14 and ts.isdigit():
+                                pub_iso = datetime.datetime.strptime(ts, "%Y%m%d%H%M%S").replace(tzinfo=datetime.timezone.utc).isoformat()
+                            else:
+                                pub_iso = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")).isoformat()
+                        except Exception:
+                            pass
+                            
+                    feed_data.append({
+                        "id": str(h.id),
+                        "title": payload.get("title", "Untitled"),
+                        "url": payload.get("source", ""),
+                        "source": payload.get("source", ""),
+                        "image_url": None,
+                        "published_at": pub_iso,
+                        "category": category,
+                        "content": payload.get("content", ""),
+                        "ai_slop_score": None,
+                        "ai_slop_label": None,
+                    })
+                    
+        except Exception as e:
+            logger.warning("Qdrant category search failed for '%s': %s", category, e)
+            
+    if not feed_data:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Article).where(Article.category == category).order_by(desc(Article.published_at)).limit(30)
+            )
+            feed_data = [_serialize_article(a) for a in result.scalars().all()]
+            
+    source = "qdrant_semantic" if (encoder and qdrant and raw_hits) else "postgres_fallback"
+    return {"source": source, "data": feed_data}
 
 
 @router.get("/article/{article_id}")
