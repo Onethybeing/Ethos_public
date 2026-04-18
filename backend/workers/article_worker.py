@@ -37,9 +37,11 @@ async def start_worker():
     logger.info("RabbitMQ Article Worker initialized. Listening for tasks...")
     await queue.consume(process_message)
     
-    # Run forever
-    await asyncio.Future()
-
+    # We do NOT run `await asyncio.Future()` here if integrated directly into FastAPI.
+    # The FastAPI main event loop keeps the process alive instead.
+    
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(start_worker())
+    import asyncio
+    asyncio.get_event_loop().run_until_complete(start_worker())
+    asyncio.get_event_loop().run_forever()

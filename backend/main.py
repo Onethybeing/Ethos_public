@@ -31,12 +31,18 @@ from backend.api.voice import router as voice_router
 
 from backend.core.kafka import init_kafka_producer, close_kafka_producer
 from backend.core.rabbitmq import init_rabbitmq, close_rabbitmq
+from backend.workers.article_worker import start_worker
+import asyncio
 
 logger = logging.getLogger(__name__)
+
+# Global reference to our background worker task
+_worker_task = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown logic."""
+    global _worker_task
     settings = get_settings()
     setup_logging(settings.log_level)
     logger.info("EthosNews API starting up (env=%s)…", settings.environment)
@@ -49,10 +55,18 @@ async def lifespan(app: FastAPI):
     await init_kafka_producer(settings.kafka_broker_url)
     await init_rabbitmq(settings.rabbitmq_url)
 
+    # Automatically start the background RabbitMQ worker in the same process
+    # so we can run entirely on one free server without credit cards!
+    _worker_task = asyncio.create_task(start_worker())
+    logger.info("Background RabbitMQ Worker spawned inside FastAPI process.")
+
     # Warm up shared singletons on first request rather than at boot
     # (encoder/nlp are lazy — they load on first use to keep startup fast)
     logger.info("EthosNews API ready.")
     yield
+    
+    if _worker_task:
+        _worker_task.cancel()
     
     # Clean up messaging connection on shutdown
     await close_kafka_producer()
