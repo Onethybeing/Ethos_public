@@ -37,21 +37,21 @@ class Settings(BaseSettings):
     gemini_model_strong: str = "gemini-1.5-pro"
 
     # ── Infrastructure ─────────────────────────────────────────────────────
-    qdrant_url: str = "https://ef25fb4f-5ac1-42ab-b034-4efa9b4d1020.eu-central-1-0.aws.cloud.qdrant.io"
-    qdrant_api_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.iLqajO84otUonJ-z2oxy8N2yTOg9s7BspQriaXHUcIQ"
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
     qdrant_collection: str = "news_articles_streaming"
 
-    postgres_url: str = "postgresql+asyncpg://neondb_owner:npg_dJ87MzoyqmZf@ep-young-mountain-amxoo9os-pooler.c-5.us-east-1.aws.neon.tech/neondb?ssl=require"
-    redis_url: str = "rediss://default:gQAAAAAAAU2vAAIncDI5MDMxNjc4YzhhNTY0YWQyODBmN2NjNzlmMmJiNzNlMnAyODU0MjM@stirred-gelding-85423.upstash.io:6379"
-
-    kafka_broker_url: str = "localhost:9092"
-    rabbitmq_url: str = "amqps://kvrxnlwn:Jr5sJRFGD32hq2i6VDY-DGXrx6X1o-NE@fuji.lmq.cloudamqp.com/kvrxnlwn"
+    postgres_url: str = ""
+    redis_url: str = ""
+    
+    kafka_broker_url: str = ""
+    rabbitmq_url: str = ""
 
     # Comma-separated allowed CORS origins (e.g. "http://localhost:3000,https://app.ethosnews.com")
     cors_origins: str = "http://localhost:3000,http://localhost:5173,https://ethos-news.vercel.app,*"
 
     # ── Fact-checking ─────────────────────────────────────────────────────
-    tavily_api_key: str = "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"
+    tavily_api_key: str = ""
     # Max LLM classify calls running concurrently (throttles Groq TPM usage)
     fact_check_max_concurrent: int = 3
 
