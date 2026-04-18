@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # ── Auth ───────────────────────────────────────────────────────────────
-    jwt_secret: str = ""
+    jwt_secret: str = "hello_bhai_sourav_hoon2222"
     jwt_algorithm: str = "HS256"
     access_token_exp_minutes: int = 60 * 24
 
@@ -37,18 +37,21 @@ class Settings(BaseSettings):
     gemini_model_strong: str = "gemini-1.5-pro"
 
     # ── Infrastructure ─────────────────────────────────────────────────────
-    qdrant_url: str = "http://localhost:6333"
-    qdrant_api_key: str = ""
+    qdrant_url: str = "https://ef25fb4f-5ac1-42ab-b034-4efa9b4d1020.eu-central-1-0.aws.cloud.qdrant.io"
+    qdrant_api_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.iLqajO84otUonJ-z2oxy8N2yTOg9s7BspQriaXHUcIQ"
     qdrant_collection: str = "news_articles_streaming"
 
-    postgres_url: str = "postgresql+asyncpg://ethos:ethos@localhost:5432/ethos"
-    redis_url: str = "redis://localhost:6379/0"
+    postgres_url: str = "postgresql+asyncpg://neondb_owner:npg_dJ87MzoyqmZf@ep-young-mountain-amxoo9os-pooler.c-5.us-east-1.aws.neon.tech/neondb?ssl=require"
+    redis_url: str = "rediss://default:gQAAAAAAAU2vAAIncDI5MDMxNjc4YzhhNTY0YWQyODBmN2NjNzlmMmJiNzNlMnAyODU0MjM@stirred-gelding-85423.upstash.io:6379"
+
+    kafka_broker_url: str = "localhost:9092"
+    rabbitmq_url: str = "amqps://kvrxnlwn:Jr5sJRFGD32hq2i6VDY-DGXrx6X1o-NE@fuji.lmq.cloudamqp.com/kvrxnlwn"
 
     # Comma-separated allowed CORS origins (e.g. "http://localhost:3000,https://app.ethosnews.com")
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
     # ── Fact-checking ─────────────────────────────────────────────────────
-    tavily_api_key: str = ""
+    tavily_api_key: str = "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"
     # Max LLM classify calls running concurrently (throttles Groq TPM usage)
     fact_check_max_concurrent: int = 3
 

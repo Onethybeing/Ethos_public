@@ -42,6 +42,12 @@ async def set_cached_user_feed(user_id: str, feed_data: list, ttl: int = 120) ->
     await _get_client().setex(f"{_USER_FEED_CACHE_PREFIX}{user_id}", ttl, json.dumps(feed_data))
 
 
+async def get_user_dynamic_profile(user_id: str) -> dict:
+    """Fetch real-time dynamic recommendation profile populated by Kafka Streams."""
+    data = await _get_client().get(f"user_profile:{user_id}")
+    return json.loads(data) if data else {}
+
+
 # ── Individual article ─────────────────────────────────────────────────────
 
 async def get_cached_article(article_id: str) -> dict | None:

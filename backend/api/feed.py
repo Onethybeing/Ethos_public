@@ -180,6 +180,17 @@ async def get_personalized_feed(user_id: str, current_user: User = Depends(get_c
         priority_domains: list[str] = const.get("topical_constraints", {}).get("priority_domains", [])
         excluded_topics: list[str] = const.get("topical_constraints", {}).get("excluded_topics", [])
 
+        # Blend Kafka Streams dynamic profile interests
+        dynamic_profile = await cache.get_user_dynamic_profile(user_id)
+        if dynamic_profile:
+            # Add top dynamic categories to priority domains dynamically
+            sorted_dynamic = sorted(dynamic_profile, key=dynamic_profile.get, reverse=True)
+            top_active_interests = [cat for cat in sorted_dynamic[:3] if dynamic_profile[cat] > 0]
+            priority_domains.extend(top_active_interests)
+            
+            # Remove duplicated entries while preserving order
+            priority_domains = list(dict.fromkeys(priority_domains))
+
         feed_data: list[dict] = []
         encoder = get_encoder()
         qdrant = get_qdrant()

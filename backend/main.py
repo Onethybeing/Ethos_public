@@ -29,8 +29,10 @@ from backend.api.rephrase import router as rephrase_router
 from backend.api.engagement import router as engagement_router
 from backend.api.voice import router as voice_router
 
-logger = logging.getLogger(__name__)
+from backend.core.kafka import init_kafka_producer, close_kafka_producer
+from backend.core.rabbitmq import init_rabbitmq, close_rabbitmq
 
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -42,10 +44,19 @@ async def lifespan(app: FastAPI):
     # Ensure Postgres tables exist
     await init_db()
 
+    # Initialize messaging queues
+    # In production, broker URLs should be set via config
+    await init_kafka_producer(settings.kafka_broker_url)
+    await init_rabbitmq(settings.rabbitmq_url)
+
     # Warm up shared singletons on first request rather than at boot
     # (encoder/nlp are lazy — they load on first use to keep startup fast)
     logger.info("EthosNews API ready.")
     yield
+    
+    # Clean up messaging connection on shutdown
+    await close_kafka_producer()
+    await close_rabbitmq()
     logger.info("EthosNews API shutting down.")
 
 

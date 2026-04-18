@@ -4,10 +4,11 @@ import uuid
 from typing import List
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy import select, func, delete, update
 
 from backend.core.auth import get_current_user
+from backend.core.kafka import stream_event
 from backend.core.db.postgres import (
     AsyncSessionLocal,
     User,
@@ -103,6 +104,7 @@ async def get_article_engagement(
 async def vote_article(
     article_id: str,
     request: VoteRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -110,6 +112,12 @@ async def vote_article(
     ENFORCEMENT: Only allowed if the user has an EngagementEvent for this article.
     """
     async with AsyncSessionLocal() as session:
+        # Fetch the article to get the category for streaming
+        article_result = await session.execute(
+            select(Article.category).where(Article.id == article_id)
+        )
+        article_category = article_result.scalar_one_or_none() or "Unknown"
+
         if request.vote == 0:
             # Clear vote
             await session.execute(
@@ -142,6 +150,17 @@ async def vote_article(
                 await _increment_user_participation(session, current_user.id)
 
         await session.commit()
+
+        # Stream event to Kafka for dynamic recommendations
+        action_name = "UPVOTE" if request.vote == 1 else ("DOWNVOTE" if request.vote == -1 else "CLEAR_VOTE")
+        background_tasks.add_task(
+            stream_event,
+            user_id=current_user.id,
+            article_id=article_id,
+            action=action_name,
+            category=article_category
+        )
+
         return {"status": "ok", "vote": request.vote}
 
 

@@ -1,0 +1,64 @@
+version: "3"
+
+services:
+  # The web API handling client requests
+  - type: web
+    name: ethos-api
+    env: python
+    repo: https://github.com/Onethybeing/Ethos_public
+    branch: main
+    buildFilter:
+      paths:
+        - backend/**
+        - pyproject.toml
+        - src/**
+    buildCommand: "python -m pip install -e ."
+    startCommand: "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: POSTGRES_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+
+  # The background worker running ingestion jobs
+  - type: worker
+    name: ethos-worker
+    env: python
+    repo: https://github.com/Onethybeing/Ethos_public
+    branch: main
+    buildFilter:
+      paths:
+        - backend/**
+        - pyproject.toml
+        - src/**
+    buildCommand: "python -m pip install -e ."
+    startCommand: "python -m backend.workers.article_worker"
+    envVars:
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: POSTGRES_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
