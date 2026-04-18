@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   # The web API handling client requests
   - type: web
