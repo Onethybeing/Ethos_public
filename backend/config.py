@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     rabbitmq_url: str = "amqps://kvrxnlwn:Jr5sJRFGD32hq2i6VDY-DGXrx6X1o-NE@fuji.lmq.cloudamqp.com/kvrxnlwn"
 
     # Comma-separated allowed CORS origins (e.g. "http://localhost:3000,https://app.ethosnews.com")
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173,https://ethos-news.vercel.app,*"
 
     # ── Fact-checking ─────────────────────────────────────────────────────
     tavily_api_key: str = "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"
